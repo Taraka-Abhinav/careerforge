@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Target, BrainCircuit, Sliders, BookOpen, Clock, Smile, Flame, Github, CheckCircle, Fingerprint, ArrowRight, Sparkles, Check, GraduationCap } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -33,8 +33,32 @@ export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({ ...INITIAL_BASELINE_PROFILE });
+  const [isEditMode, setIsEditMode] = useState(false);
   const totalSteps = 11;
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const hydrateProfile = async () => {
+      const params = new URLSearchParams(window.location.search);
+      if (isMounted) setIsEditMode(params.get('mode') === 'edit');
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const existing = await ProfileService.getProfile(user.id);
+      if (isMounted && existing) {
+        setProfile(existing);
+      }
+    };
+
+    hydrateProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const nextStep = () => { if (step < totalSteps) setStep(step + 1); };
   const prevStep = () => { if (step > 1) setStep(step - 1); };
@@ -65,7 +89,8 @@ export default function Onboarding() {
       await MissionService.generateDailyMissions(user.id);
       await GoalService.generateWeeklyGoal(user.id);
       await ChallengeService.assignDailyChallenges(user.id);
-      navigate('/dashboard');
+      const destination = isEditMode ? '/profile' : '/dashboard';
+      navigate(destination);
     } catch (err) {
       console.error(err);
       setIsAnalyzing(false);

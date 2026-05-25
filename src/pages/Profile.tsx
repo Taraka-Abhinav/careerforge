@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  User, Target, BrainCircuit, MapPin, GraduationCap, Github, Flame, Trophy, Settings, Pencil, Save,
+  User, Target, BrainCircuit, MapPin, GraduationCap, Github, Flame, Trophy, Settings, Pencil, Save, Sparkles,
 } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -84,9 +84,14 @@ export default function ProfilePage() {
           </div>
           <div className="flex gap-2 flex-wrap">
             {!editing ? (
-              <Button variant="secondary" icon={<Pencil className="w-4 h-4" />} onClick={() => setEditing(true)}>
-                Edit profile
-              </Button>
+              <>
+                <Button variant="secondary" icon={<Sparkles className="w-4 h-4" />} onClick={() => navigate('/onboarding?mode=edit')}>
+                  Edit wizard
+                </Button>
+                <Button variant="secondary" icon={<Pencil className="w-4 h-4" />} onClick={() => setEditing(true)}>
+                  Edit profile
+                </Button>
+              </>
             ) : (
               <>
                 <Button variant="ghost" onClick={() => { setEditing(false); setDraft(profile); }}>Cancel</Button>
