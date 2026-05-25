@@ -16,12 +16,15 @@ import ProfilePage from './pages/Profile';
 import SettingsPage from './pages/Settings';
 import HackathonPage from './pages/Hackathon';
 import { AuthGuard } from './components/auth/AuthGuard';
+import { useEffect, useState } from 'react';
+import { supabase } from './supabase/client';
+import HomeRedirect from './components/auth/HomeRedirect';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<HomeRedirect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         
