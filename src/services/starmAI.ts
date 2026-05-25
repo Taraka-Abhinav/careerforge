@@ -1,32 +1,25 @@
 /**
  * Optional LLM enhancement for StarM.
- * Set VITE_OPENAI_API_KEY in .env for richer explanations (falls back to templates).
+ * This calls a serverless API so secrets are never exposed in the browser.
  */
 
-const OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
+const STARM_API_ENDPOINT = '/api/starm';
 
 export async function enhanceWithLLM(system: string, user: string): Promise<string | null> {
-  if (!OPENAI_KEY?.trim()) return null;
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch(STARM_API_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-        temperature: 0.7,
-        max_tokens: 600,
+        system,
+        user,
       }),
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() || null;
+    return typeof data.content === 'string' ? data.content.trim() : null;
   } catch {
     return null;
   }

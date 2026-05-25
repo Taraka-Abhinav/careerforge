@@ -16,9 +16,32 @@ export function AppShell({ children }: AppShellProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) ProgressService.getProgress(data.user.id).then(setProgress);
-    });
+    let isMounted = true;
+
+    const loadProgress = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user && isMounted) {
+        const p = await ProgressService.getProgress(data.user.id);
+        if (isMounted) setProgress(p);
+      }
+    };
+
+    const handleXpUpdate = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { progress?: UserProgress } | undefined;
+      if (detail?.progress) {
+        setProgress(detail.progress);
+      } else {
+        loadProgress();
+      }
+    };
+
+    loadProgress();
+    window.addEventListener('xp-updated', handleXpUpdate);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('xp-updated', handleXpUpdate);
+    };
   }, []);
 
   return (

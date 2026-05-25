@@ -15,6 +15,7 @@ export default function StarMPage() {
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<'success' | 'error' | null>(null);
   const [showHints, setShowHints] = useState(false);
 
   useEffect(() => {
@@ -42,7 +43,8 @@ export default function StarMPage() {
     if (!user) return;
     setVerifying(true);
     const result = await DailyCodingService.submit(user.id, active.id, code, active);
-    setMessage(result.passed ? `All tests passed! +${result.awarded ? active.xpReward : 0} XP` : 'Tests failed — check logic and try again.');
+    setMessage(result.message);
+    setMessageTone(result.passed ? 'success' : 'error');
     if (result.passed) {
       setProblems((prev) => prev.map((p) => (p.id === active.id ? { ...p, completed: true, passed: true } : p)));
       setActive(null);
@@ -126,7 +128,11 @@ export default function StarMPage() {
           </Card>
         )}
 
-        {message && <p className={cn('text-center font-bold', message.includes('passed') ? 'text-emerald-400' : 'text-rose-400')}>{message}</p>}
+        {message && (
+          <p className={cn('text-center font-bold', messageTone === 'success' ? 'text-emerald-400' : 'text-rose-400')}>
+            {message}
+          </p>
+        )}
       </div>
     </AppShell>
   );

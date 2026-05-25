@@ -20,6 +20,12 @@ export interface DailyCodingProblem {
   passed?: boolean;
 }
 
+export interface DailySubmissionResult {
+  passed: boolean;
+  awarded: boolean;
+  message: string;
+}
+
 const DAILY_INVOKE: Record<string, string> = {
   'cart-total': 'cartTotal(input.items)',
   'csv-parse': 'salesByRegion(input.rows)',
@@ -34,6 +40,39 @@ const DAILY_INVOKE: Record<string, string> = {
   'rate-limiter': 'allowRequest(input.userId, input.timestamp, input.limit)',
   'sql-injection-safe': 'buildWhere(input.allowed, input.filters)',
 };
+
+const DAILY_FUNCTION_NAME: Record<string, string> = {
+  'cart-total': 'cartTotal',
+  'csv-parse': 'salesByRegion',
+  'password-strength': 'passwordStrength',
+  'binary-search': 'findSku',
+  'react-filter': 'filterJobs',
+  'ml-accuracy': 'accuracy',
+  'docker-health': 'allHealthy',
+  'flatten-json': 'flatten',
+  'leetcode-two-sum': 'twoSum',
+  'git-merge': 'mergeSorted',
+  'rate-limiter': 'allowRequest',
+  'sql-injection-safe': 'buildWhere',
+};
+
+function hasNamedFunction(code: string, name: string): boolean {
+  const patterns = [
+    new RegExp(`function\\s+${name}\\s*\\(`),
+    new RegExp(`\\b${name}\\s*=\\s*function\\s*\\(`),
+    new RegExp(`\\bconst\\s+${name}\\s*=\\s*\\(`),
+    new RegExp(`\\blet\\s+${name}\\s*=\\s*\\(`),
+    new RegExp(`\\bvar\\s+${name}\\s*=\\s*\\(`),
+  ];
+  return patterns.some((p) => p.test(code));
+}
+
+function getNamingIssue(code: string, templateId: string): string | null {
+  const required = DAILY_FUNCTION_NAME[templateId];
+  if (!required) return null;
+  if (hasNamedFunction(code, required)) return null;
+  return `Function name mismatch. Expected \"${required}\" — rename your function to match the starter code.`;
+}
 
 function hashSeed(str: string): number {
   let h = 0;
@@ -152,11 +191,16 @@ export const DailyCodingService = {
     }));
   },
 
-  async submit(userId: string, problemId: string, code: string, template: DailyCodingProblem): Promise<{ passed: boolean; awarded: boolean }> {
+  async submit(userId: string, problemId: string, code: string, template: DailyCodingProblem): Promise<DailySubmissionResult> {
     const bankItem = DAILY_PROBLEM_BANK.find((b) => b.title === template.title) || {
       testCases: template.testCases,
       id: 'generic',
     } as DailyCodingProblemTemplate;
+
+    const namingIssue = getNamingIssue(code, bankItem.id);
+    if (namingIssue) {
+      return { passed: false, awarded: false, message: namingIssue };
+    }
 
     const passed = await runDailyTest(code, bankItem);
 
@@ -167,7 +211,13 @@ export const DailyCodingService = {
         .eq('user_id', userId)
         .eq('problem_id', problemId)
         .maybeSingle();
-      if (existing?.id && passed) return { passed: true, awarded: false };
+      if (existing?.id && passed) {
+        return {
+          passed: true,
+          awarded: false,
+          message: `All tests passed! +0 XP (already awarded today).`,
+        };
+      }
 
       await supabase.from('starm_daily_coding_submissions').upsert({
         user_id: userId,
@@ -178,8 +228,15 @@ export const DailyCodingService = {
       });
     }
 
-    if (!passed) return { passed: false, awarded: false };
+    if (!passed) {
+      return { passed: false, awarded: false, message: 'Tests failed — check logic and try again.' };
+    }
+
     const { awarded } = await XPService.awardOnce(userId, 'challenge', `daily-code-${problemId}`, template.xpReward);
-    return { passed: true, awarded };
+    return {
+      passed: true,
+      awarded,
+      message: `All tests passed! +${awarded ? template.xpReward : 0} XP`,
+    };
   },
 };

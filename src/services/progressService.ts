@@ -18,9 +18,11 @@ export const ProgressService = {
       lastActiveDate: new Date().toISOString()
     };
 
+    const cachedRaw = localStorage.getItem(`progress_${userId}`);
+    const cached = cachedRaw ? JSON.parse(cachedRaw) as UserProgress : null;
+
     if (!isSupabaseConfigured) {
-      const cached = localStorage.getItem(`progress_${userId}`);
-      return cached ? JSON.parse(cached) : fallback;
+      return cached || fallback;
     }
 
     try {
@@ -31,6 +33,7 @@ export const ProgressService = {
         .single();
 
       if (error || !data) {
+        if (cached) return cached;
         await this.saveProgress(userId, fallback);
         return fallback;
       }
@@ -43,8 +46,7 @@ export const ProgressService = {
       };
     } catch (e) {
       console.error('Supabase progress retrieval failed, loading local', e);
-      const cached = localStorage.getItem(`progress_${userId}`);
-      return cached ? JSON.parse(cached) : fallback;
+      return cached || fallback;
     }
   },
 
