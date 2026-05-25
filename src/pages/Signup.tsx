@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { supabase } from '../supabase/client';
+import { getOAuthRedirectUrl } from '../utils/authRedirect';
 import { Map, ArrowRight } from 'lucide-react';
 
 export default function Signup() {
@@ -34,11 +35,10 @@ export default function Signup() {
     setGoogleLoading(true);
     setError('');
 
+    const redirectTo = getOAuthRedirectUrl();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
+      ...(redirectTo ? { options: { redirectTo } } : {}),
     });
 
     if (error) {
