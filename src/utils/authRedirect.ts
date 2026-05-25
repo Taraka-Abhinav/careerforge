@@ -5,3 +5,8 @@ export async function getPostAuthPath(userId: string): Promise<string> {
   if (!profile || !profile.isComplete) return '/onboarding';
   return '/dashboard';
 }
+
+export function getOAuthRedirectUrl(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return `${window.location.origin}/auth/callback`;
+}
