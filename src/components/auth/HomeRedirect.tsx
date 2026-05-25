@@ -8,21 +8,15 @@ export default function HomeRedirect() {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      setAuthenticated(!!session);
+    supabase.auth.getSession().then(({ data }) => {
+      setAuthenticated(!!data.session);
       setLoading(false);
-    };
-
-    checkSession();
+    });
   }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-white">
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
         Loading...
       </div>
     );
