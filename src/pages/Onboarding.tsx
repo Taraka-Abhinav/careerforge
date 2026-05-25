@@ -446,8 +446,8 @@ export default function Onboarding() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto flex items-center justify-center p-6">
-        <div className="w-full max-w-2xl py-10">
+      <div className="flex-1 min-h-0 overflow-y-auto flex items-start justify-center p-6">
+        <div className="w-full max-w-2xl pt-8 pb-24">
           {renderStepContent()}
         </div>
       </div>
