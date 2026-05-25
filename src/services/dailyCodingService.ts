@@ -20,6 +20,21 @@ export interface DailyCodingProblem {
   passed?: boolean;
 }
 
+const DAILY_INVOKE: Record<string, string> = {
+  'cart-total': 'cartTotal(input.items)',
+  'csv-parse': 'salesByRegion(input.rows)',
+  'password-strength': 'passwordStrength(input.pw)',
+  'binary-search': 'findSku(input.sorted, input.target)',
+  'react-filter': 'filterJobs(input.jobs, input.keyword)',
+  'ml-accuracy': 'accuracy(input.yTrue, input.yPred)',
+  'docker-health': 'allHealthy(input.services)',
+  'flatten-json': 'flatten(input.obj)',
+  'leetcode-two-sum': 'twoSum(input.nums, input.target)',
+  'git-merge': 'mergeSorted(input.a, input.b)',
+  'rate-limiter': 'allowRequest(input.userId, input.timestamp, input.limit)',
+  'sql-injection-safe': 'buildWhere(input.allowed, input.filters)',
+};
+
 function hashSeed(str: string): number {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
@@ -48,22 +63,8 @@ function problemsForProfile(profile: UserProfile, seed: number): DailyCodingProb
 }
 
 async function runDailyTest(code: string, template: DailyCodingProblemTemplate): Promise<boolean> {
-  const id = template.id;
-  const wrapped = `${code}
-${id === 'cart-total' ? 'return cartTotal(items);' : ''}
-${id === 'csv-parse' ? 'return salesByRegion(rows);' : ''}
-${id === 'password-strength' ? 'return passwordStrength(pw);' : ''}
-${id === 'binary-search' ? 'return findSku(sorted, target);' : ''}
-${id === 'react-filter' ? 'return filterJobs(jobs, keyword);' : ''}
-${id === 'ml-accuracy' ? 'return accuracy(yTrue, yPred);' : ''}
-${id === 'docker-health' ? 'return allHealthy(services);' : ''}
-${id === 'flatten-json' ? 'return flatten(obj);' : ''}
-${id === 'leetcode-two-sum' ? 'return twoSum(nums, target);' : ''}
-${id === 'git-merge' ? 'return mergeSorted(a, b);' : ''}
-${id === 'rate-limiter' ? 'return allowRequest(userId, timestamp, limit);' : ''}
-${id === 'sql-injection-safe' ? 'return buildWhere(allowed, filters);' : ''}
-`;
-  return ValidationService.validateChallenge('', '', wrapped, template.testCases);
+  const invoke = DAILY_INVOKE[template.id] || 'solve(input)';
+  return ValidationService.validateChallenge('', '', code, template.testCases, invoke);
 }
 
 export const DailyCodingService = {
