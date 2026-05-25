@@ -174,15 +174,17 @@ export default function Onboarding() {
       case 4: return (
         <div className="space-y-6 animate-fade-in-up">
           <div className="space-y-1">
-            <h2 className="text-3xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-3xl font-bold text-white inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-sm">
               <BrainCircuit className="text-emerald-400 w-8 h-8"/> Skills you already know
             </h2>
-            <p className="text-neutral-400 text-sm">Select baseline skills to calibrate starting level.</p>
+            <p className="text-neutral-300 text-sm">Select baseline skills to calibrate starting level.</p>
           </div>
           <div className="space-y-4">
             {SKILL_TAXONOMY.map((cat, idx) => (
               <div key={idx} className="space-y-2">
-                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">{cat.category}</span>
+                <span className="text-[11px] font-semibold text-neutral-200 uppercase tracking-wider bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg inline-flex">
+                  {cat.category}
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {cat.skills.map(skill => {
                     const isSelected = profile.skills.known.find(s => s.name === skill);
@@ -208,15 +210,17 @@ export default function Onboarding() {
       case 5: return (
         <div className="space-y-6 animate-fade-in-up">
           <div className="space-y-1">
-            <h2 className="text-3xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-3xl font-bold text-white inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-sm">
               <Sliders className="text-amber-400 w-8 h-8"/> Skills you want to master
             </h2>
-            <p className="text-neutral-400 text-sm">Select targeted skills to unlock in the path.</p>
+            <p className="text-neutral-300 text-sm">Select targeted skills to unlock in the path.</p>
           </div>
           <div className="space-y-4">
             {SKILL_TAXONOMY.map((cat, idx) => (
               <div key={idx} className="space-y-2">
-                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">{cat.category}</span>
+                <span className="text-[11px] font-semibold text-neutral-200 uppercase tracking-wider bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg inline-flex">
+                  {cat.category}
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {cat.skills.map(skill => {
                     const isSelected = profile.skills.learning.find(s => s.name === skill);
