@@ -197,6 +197,8 @@ export const DailyCodingService = {
       id: 'generic',
     } as DailyCodingProblemTemplate;
 
+    const today = new Date().toISOString().split('T')[0];
+
     const namingIssue = getNamingIssue(code, bankItem.id);
     if (namingIssue) {
       return { passed: false, awarded: false, message: namingIssue };
@@ -232,7 +234,8 @@ export const DailyCodingService = {
       return { passed: false, awarded: false, message: 'Tests failed — check logic and try again.' };
     }
 
-    const { awarded } = await XPService.awardOnce(userId, 'challenge', `daily-code-${problemId}`, template.xpReward);
+    const awardKey = problemId.startsWith('local-') ? `${problemId}-${today}` : problemId;
+    const { awarded } = await XPService.awardOnce(userId, 'challenge', `daily-code-${awardKey}`, template.xpReward);
     return {
       passed: true,
       awarded,
