@@ -16,6 +16,7 @@ import StarMPage from './pages/StarM';
 import ProfilePage from './pages/Profile';
 import SettingsPage from './pages/Settings';
 import HackathonPage from './pages/Hackathon';
+import QuizzesPage from './pages/Quizzes';
 import { AuthGuard } from './components/auth/AuthGuard';
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase/client';
@@ -70,6 +71,12 @@ export default function App() {
         <Route path="/analytics" element={
           <AuthGuard>
             <AnalyticsPage />
+          </AuthGuard>
+        } />
+
+        <Route path="/quizzes" element={
+          <AuthGuard>
+            <QuizzesPage />
           </AuthGuard>
         } />
 

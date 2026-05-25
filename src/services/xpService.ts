@@ -111,6 +111,9 @@ export const XPService = {
       lastActiveDate: new Date().toISOString(),
     };
     await ProgressService.saveProgress(userId, updated);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('xp-updated', { detail: { progress: updated } }));
+    }
     return { progress: updated, leveledUp, awarded: true };
   },
 };
