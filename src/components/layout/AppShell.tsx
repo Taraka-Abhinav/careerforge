@@ -58,7 +58,7 @@ export function AppShell({ children }: AppShellProps) {
             </div>
             <span className="font-extrabold text-xl tracking-tight">CareerForge</span>
           </div>
-          <nav className="space-y-2 max-h-[50vh] overflow-y-auto custom-scrollbar">
+          <nav className="space-y-2">
             {APP_NAV.map((item) => (
               <NavLink
                 key={item.path}
@@ -78,21 +78,30 @@ export function AppShell({ children }: AppShellProps) {
             ))}
           </nav>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard')}
-          className="bg-neutral-900 border border-white/5 p-4 rounded-2xl flex items-center gap-4 w-full text-left hover:border-indigo-500/30 transition-colors"
-        >
-          <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center border border-indigo-500/50 shrink-0">
-            <Trophy className="w-5 h-5 text-indigo-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">
-              Level {progress.level} Hacker
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => navigate('/settings')}
+            className="w-full text-xs font-bold text-neutral-300 bg-neutral-900/60 border border-white/10 px-4 py-2 rounded-xl backdrop-blur-sm hover:text-white hover:bg-white/5 hover:border-indigo-500/30 transition-colors"
+          >
+            View Plans
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            className="bg-neutral-900 border border-white/5 p-4 rounded-2xl flex items-center gap-4 w-full text-left hover:border-indigo-500/30 transition-colors"
+          >
+            <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center border border-indigo-500/50 shrink-0">
+              <Trophy className="w-5 h-5 text-indigo-400" />
             </div>
-            <div className="text-sm font-black text-white truncate">{progress.xp.toLocaleString()} XP</div>
-          </div>
-        </button>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">
+                Level {progress.level} Hacker
+              </div>
+              <div className="text-sm font-black text-white truncate">{progress.xp.toLocaleString()} XP</div>
+            </div>
+          </button>
+        </div>
       </aside>
 
       <main className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 min-w-0">{children}</main>
