@@ -11,13 +11,26 @@ export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!isMounted) return;
-      if (session) {
-        setSession(session);
-        setLoading(false);
+    const restoreSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        if (session) {
+          setSession(session);
+          setLoading(false);
+          return;
+        }
+
+        const { data: refresh } = await supabase.auth.refreshSession();
+        if (!isMounted) return;
+        setSession(refresh.session || null);
+      } catch {
+        if (!isMounted) return;
+        setSession(null);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    });
+    };
 
     const {
       data: { subscription },
@@ -28,6 +41,8 @@ export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
       }
     });
+
+    restoreSession();
 
     return () => {
       isMounted = false;
