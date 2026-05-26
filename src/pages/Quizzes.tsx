@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, CalendarRange, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, CalendarRange, CheckCircle2, History } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -8,17 +8,20 @@ import { Card } from '../components/ui/Card';
 import { QuizRunner } from '../components/quiz/QuizRunner';
 import { supabase } from '../supabase/client';
 import { ProfileService } from '../services/profileService';
-import { QuizDeckService, type QuizDeck } from '../services/quizDeckService';
+import { QuizDeckService, type QuizDeck, type QuizHistoryRow } from '../services/quizDeckService';
+import { SubscriptionService } from '../services/subscriptionService';
 import { cn } from '../utils/cn';
 
 export default function QuizzesPage() {
   const [mode, setMode] = useState<'daily' | 'weekly'>('daily');
   const [deck, setDeck] = useState<QuizDeck | null>(null);
+  const [history, setHistory] = useState<QuizHistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<'success' | 'error' | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [weeklyAllowed, setWeeklyAllowed] = useState<boolean | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +31,7 @@ export default function QuizzesPage() {
       setLoading(true);
       setMessage(null);
       setMessageTone(null);
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate('/login');
@@ -41,12 +45,30 @@ export default function QuizzesPage() {
         return;
       }
 
+      const weeklyAccess = await SubscriptionService.canUseFeature(user.id, 'unlimited_quizzes');
+      if (isMounted) setWeeklyAllowed(weeklyAccess);
+
+      if (mode === 'weekly' && !weeklyAccess) {
+        if (isMounted) {
+          setMode('daily');
+          setMessage('Weekly quizzes are available with CareerForge Pro.');
+          setMessageTone('error');
+        }
+        return;
+      }
+
       const next = mode === 'daily'
-        ? QuizDeckService.getDailyQuiz(user.id, profile)
-        : QuizDeckService.getWeeklyQuiz(user.id, profile);
+        ? await QuizDeckService.getDailyQuiz(user.id, profile)
+        : await QuizDeckService.getWeeklyQuiz(user.id, profile);
+      const nextHistory = await QuizDeckService.getAttemptHistory(user.id);
+
+      if (mode === 'weekly' && weeklyAccess) {
+        await SubscriptionService.trackFeatureUsage(user.id, 'unlimited_quizzes');
+      }
 
       if (isMounted) {
         setDeck(next);
+        setHistory(nextHistory);
         setLoading(false);
       }
     };
@@ -58,6 +80,17 @@ export default function QuizzesPage() {
     };
   }, [mode, navigate]);
 
+  const weeklyLocked = weeklyAllowed === false;
+
+  const handleModeChange = (nextMode: 'daily' | 'weekly') => {
+    if (nextMode === 'weekly' && weeklyLocked) {
+      setMessage('Weekly quizzes are part of CareerForge Pro. Upgrade to unlock.');
+      setMessageTone('error');
+      return;
+    }
+    setMode(nextMode);
+  };
+
   const handleSubmit = async (answers: Record<string, number>) => {
     if (!userId || !deck) return;
     setSubmitting(true);
@@ -67,16 +100,17 @@ export default function QuizzesPage() {
         ? `+${attempt.xpEarned} XP`
         : '+0 XP (already awarded)'
       : 'Below pass threshold';
-    setMessage(`Score: ${attempt.score}% — ${xpText}`);
+    setMessage(`Score: ${attempt.score}% - ${xpText}`);
     setMessageTone(attempt.passed ? 'success' : 'error');
     setDeck({ ...deck, attempt });
+    setHistory(await QuizDeckService.getAttemptHistory(userId));
     setSubmitting(false);
   };
 
   if (loading) {
     return (
       <AppShell>
-        <div className="text-neutral-400 text-center py-20">Loading quizzes…</div>
+        <div className="text-neutral-400 text-center py-20">Loading quizzes...</div>
       </AppShell>
     );
   }
@@ -100,7 +134,7 @@ export default function QuizzesPage() {
           <div>
             <h1 className="text-4xl font-extrabold">Quizzes</h1>
             <p className="text-neutral-400 mt-2">
-              Daily quizzes adapt to your known and learning skills. Weekly quizzes are shared across the same career track.
+              Daily quizzes adapt to your roadmap focus, career path, known skills, and learning skills.
             </p>
           </div>
           <div className="flex gap-2">
@@ -108,7 +142,7 @@ export default function QuizzesPage() {
               size="sm"
               variant={mode === 'daily' ? 'primary' : 'secondary'}
               icon={<CalendarDays className="w-4 h-4" />}
-              onClick={() => setMode('daily')}
+              onClick={() => handleModeChange('daily')}
             >
               Daily
             </Button>
@@ -116,16 +150,29 @@ export default function QuizzesPage() {
               size="sm"
               variant={mode === 'weekly' ? 'primary' : 'secondary'}
               icon={<CalendarRange className="w-4 h-4" />}
-              onClick={() => setMode('weekly')}
+              onClick={() => handleModeChange('weekly')}
+              disabled={weeklyLocked}
             >
               Weekly
             </Button>
           </div>
         </header>
 
+        {weeklyLocked && (
+          <Card className="p-5 border-amber-500/20 bg-amber-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="text-sm text-amber-200">
+              Weekly quizzes are a Pro feature. Daily quizzes remain free.
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => navigate('/settings')}>
+              View plans
+            </Button>
+          </Card>
+        )}
+
         <Card className="p-6 border-white/5 space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <Badge color="indigo">{deck.title}</Badge>
+            {deck.focusSkill && <Badge color="purple">{deck.focusSkill}</Badge>}
             <Badge color="neutral">Pass threshold: {deck.passThreshold}%</Badge>
             <Badge color="emerald">{deck.xpReward} XP</Badge>
           </div>
@@ -136,11 +183,11 @@ export default function QuizzesPage() {
           </div>
           {deck.attempt && (
             <div className="text-xs text-neutral-400">
-              Last attempt: {new Date(deck.attempt.completedAt).toLocaleString()} — score {deck.attempt.score}%
+              Last attempt: {new Date(deck.attempt.completedAt).toLocaleString()} - score {deck.attempt.score}%
             </div>
           )}
           <p className="text-xs text-neutral-500">
-            XP is awarded once per quiz deck when you pass.
+            XP is awarded once per quiz deck when you pass. Attempts and scores are saved.
           </p>
         </Card>
 
@@ -155,6 +202,28 @@ export default function QuizzesPage() {
           <p className={cn('text-center font-bold', messageTone === 'success' ? 'text-emerald-400' : 'text-rose-400')}>
             {message}
           </p>
+        )}
+
+        {history.length > 0 && (
+          <Card className="p-6 border-white/5">
+            <h2 className="font-bold text-white mb-4 flex items-center gap-2">
+              <History className="w-4 h-4 text-indigo-400" /> Recent Quiz History
+            </h2>
+            <div className="space-y-3">
+              {history.map((attempt) => (
+                <div key={attempt.id} className="flex items-center justify-between gap-3 text-sm border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-white truncate">{attempt.focusSkill || attempt.deckId}</div>
+                    <div className="text-xs text-neutral-500">{new Date(attempt.createdAt).toLocaleString()}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge color={attempt.passed ? 'emerald' : 'rose'}>{attempt.score}%</Badge>
+                    <Badge color="neutral">+{attempt.xpEarned} XP</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
         )}
       </div>
     </AppShell>

@@ -17,11 +17,13 @@ export interface PracticeExercise {
 
 export interface RichLessonContent {
   overview: string;
+  learningObjectives: string[];
   theory: string;
   theorySections: { title: string; body: string }[];
   codeExamples: CodeExample[];
   resources: { title: string; type: string; url?: string; duration?: string }[];
   videos: { title: string; description: string }[];
+  checkpoints: { title: string; prompt: string }[];
   keyTakeaways: string[];
 }
 
@@ -30,6 +32,7 @@ export type PracticeStep = string | { heading: string; body: string };
 export interface RichPracticeContent extends PracticeExercise {
   steps: PracticeStep[];
   hints: string[];
+  checkpoints: string[];
 }
 
 export interface RichProjectContent {
@@ -37,6 +40,7 @@ export interface RichProjectContent {
   overview: string;
   requirements: string[];
   milestones: string[];
+  checkpoints: string[];
   rubric: string[];
 }
 
@@ -45,7 +49,7 @@ const SKILL_OVERRIDES: Record<string, Partial<{ intro: string; useCase: string }
   JavaScript: { intro: 'JavaScript runs the interactive web and increasingly servers via Node.js.', useCase: 'Every browser and millions of SPAs depend on JS.' },
   React: { intro: 'React is a component-based UI library for building modern interfaces.', useCase: 'Meta, Airbnb, and Discord ship React at scale.' },
   'Machine Learning': { intro: 'ML learns patterns from data instead of hard-coded rules.', useCase: 'Recommendations, fraud detection, and medical imaging.' },
-  SQL: { intro: 'SQL is the language of relational data — queries, joins, aggregations.', useCase: 'Every company with a database needs SQL.' },
+  SQL: { intro: 'SQL is the language of relational data: queries, joins, aggregations.', useCase: 'Every company with a database needs SQL.' },
   Docker: { intro: 'Docker packages apps with dependencies into portable containers.', useCase: 'CI/CD and cloud deploys standardize on containers.' },
 };
 
@@ -59,20 +63,25 @@ function skillMeta(skill: string) {
 export function getLessonContent(skill: string, career: string): RichLessonContent {
   const meta = skillMeta(skill);
   return {
-    overview: `${meta.intro} On your **${career}** path, mastering ${skill} unlocks the next phase of your roadmap. This lesson is designed like a university lab: concept → example → application.`,
+    overview: `${meta.intro} On your **${career}** path, mastering ${skill} unlocks the next phase of your roadmap. This lesson moves from concept to example to application.`,
+    learningObjectives: [
+      `Explain what ${skill} solves in a ${career} workflow`,
+      `Identify when ${skill} is the right tool and when it is not`,
+      `Apply ${skill} to a small production-style task`,
+    ],
     theory: `Understanding ${skill} means knowing **what problem it solves**, **when to use it**, and **what breaks at scale**. ${meta.useCase}`,
     theorySections: [
       {
         title: 'Core mental model',
-        body: `Think of ${skill} as a tool in a pipeline: input → process → output. Draw the data flow before writing code. Ask: what are the edge cases (empty input, null, huge scale)?`,
+        body: `Think of ${skill} as a tool in a pipeline: input to process to output. Draw the data flow before writing code. Ask: what are the edge cases such as empty input, null values, and huge scale?`,
       },
       {
         title: 'How professionals use it',
-        body: `In industry, ${skill} appears in code review, system design, and on-call incidents. Senior engineers optimize for readability, testability, and observability — not clever one-liners.`,
+        body: `In industry, ${skill} appears in code review, system design, and incident response. Senior engineers optimize for readability, testability, and observability.`,
       },
       {
         title: 'Common mistakes',
-        body: `Beginners skip fundamentals and copy Stack Overflow without context. Avoid: no tests, no logging, mixing concerns, and ignoring official docs.`,
+        body: 'Beginners often skip fundamentals and copy snippets without context. Avoid missing tests, missing logging, mixed concerns, and ignored docs.',
       },
       {
         title: 'Career connection',
@@ -82,7 +91,7 @@ export function getLessonContent(skill: string, career: string): RichLessonConte
     codeExamples: [
       {
         title: `Starter: Hello ${skill}`,
-        language: 'javascript',
+        language: skill.includes('Python') ? 'python' : 'javascript',
         code: skill.includes('Python')
           ? `# ${skill} starter\n\ndef main():\n    print("Building ${skill} skills for ${career}")\n\nif __name__ == "__main__":\n    main()`
           : `// ${skill} starter\nfunction main() {\n  console.log("Building ${skill} skills for ${career}");\n}\nmain();`,
@@ -91,22 +100,27 @@ export function getLessonContent(skill: string, career: string): RichLessonConte
       {
         title: 'Real-world pattern',
         language: 'javascript',
-        code: `// Pattern: validate → process → respond\nfunction handleRequest(input) {\n  if (!input) throw new Error("Invalid input");\n  const result = process(input); // your ${skill} logic here\n  return { ok: true, data: result };\n}`,
-        explanation: 'Most production code follows validate/process/respond. Your frameworks hide this, but interviews test if you know it.',
+        code: `// Pattern: validate -> process -> respond\nfunction handleRequest(input) {\n  if (!input) throw new Error("Invalid input");\n  const result = process(input); // your ${skill} logic here\n  return { ok: true, data: result };\n}`,
+        explanation: 'Most production code follows validate/process/respond. Frameworks hide this, but interviews test if you know it.',
       },
     ],
     resources: [
       { title: `${skill} Official Documentation`, type: 'reading', url: 'https://developer.mozilla.org' },
-      { title: `${skill} Crash Course (Video)`, type: 'video', duration: '45 min' },
-      { title: `Practice ${skill} — Exercises`, type: 'interactive' },
+      { title: `${skill} Crash Course`, type: 'video', duration: '45 min' },
+      { title: `Practice ${skill} Exercises`, type: 'interactive' },
       { title: `${career} Interview Questions for ${skill}`, type: 'reading' },
     ],
     videos: [
       { title: `${skill} in 100 Seconds`, description: 'Quick conceptual overview' },
-      { title: `Build with ${skill} — Project Walkthrough`, description: 'End-to-end applied tutorial' },
+      { title: `Build with ${skill}`, description: 'End-to-end applied tutorial' },
+    ],
+    checkpoints: [
+      { title: 'Concept check', prompt: `Describe ${skill} in one practical sentence.` },
+      { title: 'Trade-off check', prompt: `Name one limitation or risk when using ${skill}.` },
+      { title: 'Career check', prompt: `Connect ${skill} to one responsibility in a ${career} role.` },
     ],
     keyTakeaways: [
-      `${skill} solves specific problems — know which ones.`,
+      `${skill} solves specific problems. Know which ones.`,
       'Always connect theory to a small built artifact.',
       `Tie learning back to your ${career} goal.`,
     ],
@@ -117,22 +131,27 @@ export function getPracticeContent(skill: string, career: string): RichPracticeC
   return {
     title: `${skill} Applied Challenge`,
     realWorldContext: `A startup hiring ${career} interns asks candidates to demonstrate ${skill} on a realistic ticket.`,
-    problem: `Implement a utility that processes a list of records related to ${skill}. Requirements:\n1. Handle empty input\n2. Return structured result\n3. Include basic error handling\n\nSpend 30–45 minutes. Use your notes and docs — like a real job.`,
+    problem: `Implement a utility that processes a list of records related to ${skill}. Requirements:\n1. Handle empty input\n2. Return structured result\n3. Include basic error handling\n\nSpend 30-45 minutes. Use your notes and docs like a real job.`,
     starterCode: skill.includes('Python')
       ? `def solve(records):\n    """Process records using ${skill} concepts."""\n    pass`
       : `function solve(records) {\n  // Process records using ${skill} concepts\n}`,
-    solutionOutline: 'Validate input → map/filter/reduce or loop → return { success, data, count }',
+    solutionOutline: 'Validate input -> transform records -> return { success, data, count }',
     steps: [
-      { heading: 'Understand the ticket', body: 'Read the problem twice and write expected input/output examples on paper or in comments.' },
-      { heading: 'Build the happy path', body: 'Implement the core logic first without edge cases — get something running.' },
+      { heading: 'Understand the ticket', body: 'Read the problem twice and write expected input/output examples in comments.' },
+      { heading: 'Build the happy path', body: 'Implement the core logic first without edge cases so something runs.' },
       { heading: 'Harden edge cases', body: 'Add handling for empty input, invalid data, and boundary values.' },
       { heading: 'Test like production', body: 'Run at least 3 custom test cases including one failure scenario.' },
-      { heading: 'Reflect & document', body: 'Note what you learned, what you would refactor, and how this maps to your career goal.' },
+      { heading: 'Reflect and document', body: 'Note what you learned, what you would refactor, and how this maps to your career goal.' },
     ],
     hints: [
       `Break the problem into smaller ${skill} functions.`,
-      'Console.log intermediate values while debugging.',
+      'Log intermediate values while debugging.',
       'Compare your approach to the lesson code examples.',
+    ],
+    checkpoints: [
+      'Your solution handles empty input.',
+      'Your solution includes at least 3 manual test cases.',
+      'You can explain one production improvement.',
     ],
   };
 }
@@ -148,9 +167,14 @@ export function getProjectContent(skill: string, career: string): RichProjectCon
       'Add one automated test or manual test checklist',
     ],
     milestones: [
-      'Day 1: Design + scaffold repo',
+      'Day 1: Design and scaffold repo',
       'Day 2: Core feature complete',
-      'Day 3: Polish, document, deploy or demo video',
+      'Day 3: Polish, document, deploy or record a demo',
+    ],
+    checkpoints: [
+      'The project has a clear README.',
+      'The main feature works for the happy path and edge cases.',
+      'You can demo the project in under 3 minutes.',
     ],
     rubric: [
       'Correctness (40%)',
@@ -182,6 +206,12 @@ export function getNoteSections(skill: string, career: string) {
       content: lesson.overview,
       keyPoints: lesson.keyTakeaways,
       checkpoint: { question: `Why is ${skill} on your ${career} roadmap?`, answer: lesson.keyTakeaways[2] },
+    },
+    {
+      id: 'objectives',
+      title: 'Learning Objectives',
+      content: lesson.learningObjectives.join('\n'),
+      keyPoints: lesson.learningObjectives,
     },
     {
       id: 'theory',

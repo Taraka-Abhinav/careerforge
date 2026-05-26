@@ -4,8 +4,11 @@ import { Settings as SettingsIcon, Moon, Sun, Bell, Lock, LogOut, User } from 'l
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 import { supabase } from '../supabase/client';
 import { ProfileService } from '../services/profileService';
+import { SubscriptionService } from '../services/subscriptionService';
+import type { PlanId } from '../config/subscriptionPlans';
 
 export default function SettingsPage() {
   const [email, setEmail] = useState('');
@@ -13,6 +16,7 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = useState(true);
   const [password, setPassword] = useState('');
   const [passwordMsg, setPasswordMsg] = useState('');
+  const [planId, setPlanId] = useState<PlanId>('free');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +24,9 @@ export default function SettingsPage() {
     if (saved) setTheme(saved);
     supabase.auth.getUser().then(({ data }) => {
       if (data.user?.email) setEmail(data.user.email);
+      if (data.user?.id) {
+        SubscriptionService.getSubscription(data.user.id).then((sub) => setPlanId(sub.planId));
+      }
     });
   }, []);
 
@@ -58,6 +65,35 @@ export default function SettingsPage() {
           <h2 className="font-bold flex items-center gap-2"><User className="w-5 h-5" /> Account</h2>
           <p className="text-sm text-neutral-400">Signed in as <span className="text-white font-semibold">{email}</span></p>
           <Button variant="ghost" size="sm" onClick={() => navigate('/profile')}>Edit full profile</Button>
+        </Card>
+
+        <Card className="p-6 border-white/5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-bold flex items-center gap-2"><Lock className="w-5 h-5" /> Plans</h2>
+            {SubscriptionService.isDevelopmentUnlocked() && <Badge color="emerald">Dev unlocked</Badge>}
+          </div>
+          <div className="grid gap-3">
+            {SubscriptionService.plans.map((plan) => (
+              <div key={plan.id} className="rounded-xl border border-white/5 bg-neutral-950/60 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-bold text-white">{plan.name}</div>
+                    <div className="text-sm text-neutral-400">
+                      <span className="text-indigo-300 font-bold">{plan.displayPrice}</span>
+                      {plan.originalPrice && <span className="ml-2 line-through text-neutral-500">{plan.originalPrice}</span>}
+                      {plan.discount && <span className="ml-2 text-emerald-400 font-bold">{plan.discount}</span>}
+                    </div>
+                  </div>
+                  {plan.id === planId && <Badge color="indigo">Current</Badge>}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {plan.features.slice(0, 5).map((feature) => (
+                    <Badge key={feature} color="neutral">{feature}</Badge>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
 
         <Card className="p-6 border-white/5 space-y-4">

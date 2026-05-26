@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<UserProfile>(INITIAL_BASELINE_PROFILE);
   const [progress, setProgress] = useState<UserProgress>({ xp: 0, level: 1, streakDays: 0, lastActiveDate: '' });
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [weeklyGoal, setWeeklyGoal] = useState<WeeklyGoal | null>(null);
+  const [weeklyGoals, setWeeklyGoals] = useState<WeeklyGoal[]>([]);
   const [focus, setFocus] = useState<{ skillSlug: string; skillName: string; phase: string } | null>(null);
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +48,7 @@ export default function Dashboard() {
       const [loadedProgress, loadedMissions, goal, focusSkill] = await Promise.all([
         ProgressService.getProgress(user.id),
         MissionService.getMissions(user.id),
-        GoalService.generateWeeklyGoal(user.id),
+        GoalService.generateWeeklyGoals(user.id),
         RoadmapEngine.getCurrentFocus(user.id),
       ]);
       await ChallengeService.assignDailyChallenges(user.id);
@@ -56,7 +56,7 @@ export default function Dashboard() {
       setProfile(loadedProfile);
       setProgress(loadedProgress);
       setMissions(loadedMissions);
-      setWeeklyGoal(goal);
+      setWeeklyGoals(goal);
       setFocus(focusSkill);
       setSkills([...loadedProfile.skills.known, ...loadedProfile.skills.learning]);
     } catch (e) {
@@ -70,6 +70,8 @@ export default function Dashboard() {
     if (mission.isCompleted) return;
     if (mission.type === 'challenge') {
       navigate('/challenges');
+    } else if (mission.type === 'quiz') {
+      navigate('/quizzes');
     } else {
       const slug = focus?.skillSlug || 'python';
       navigate(`/learn/${slug}`);
@@ -84,8 +86,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const goalProgress = weeklyGoal ? Math.round((weeklyGoal.currentCount / weeklyGoal.targetCount) * 100) : 0;
 
   return (
     <AppShell>
@@ -103,7 +103,11 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4 bg-neutral-900/50 border border-white/5 py-2.5 px-4 rounded-xl shadow-inner">
             <div className="flex items-center gap-2 text-orange-400 font-bold text-sm">
-              <Flame className="w-5 h-5" /> {progress.streakDays} Day Streak
+              <Flame className="w-5 h-5" /> {progress.streakDays} Day
+            </div>
+            <div className="hidden sm:block h-5 w-px bg-white/10" />
+            <div className="text-xs text-neutral-400 font-bold">
+              Week {progress.weeklyStreak || 0} | Best {progress.longestStreak || progress.streakDays}
             </div>
           </div>
         </header>
@@ -178,7 +182,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-emerald-400 font-bold text-xs bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 shrink-0">
-                      +{mission.xpReward} XP
+                      {mission.xpReward > 0 ? `+${mission.xpReward} XP` : mission.type}
                     </div>
                   </Card>
                 ))}
@@ -187,13 +191,16 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-6">
-            {weeklyGoal && (
+            {weeklyGoals.length > 0 && (
               <Card className="border-white/5 p-6 bg-gradient-to-b from-neutral-900 to-neutral-900/50 relative overflow-hidden">
                 <h3 className="font-bold text-white mb-6 flex items-center gap-2">
-                  <Target className="w-4 h-4 text-indigo-400" /> Weekly Logic Constraint
+                  <Target className="w-4 h-4 text-indigo-400" /> Weekly Goals
                 </h3>
                 <div className="space-y-5">
-                  <div>
+                  {weeklyGoals.map((weeklyGoal) => {
+                    const goalProgress = Math.round((weeklyGoal.currentCount / weeklyGoal.targetCount) * 100);
+                    return (
+                  <div key={weeklyGoal.id}>
                     <div className="flex justify-between text-xs mb-3 gap-2">
                       <span className="text-neutral-300 font-semibold">{weeklyGoal.title}</span>
                       <span className="text-white font-bold bg-white/10 px-2 py-0.5 rounded shrink-0">
@@ -202,6 +209,8 @@ export default function Dashboard() {
                     </div>
                     <ProgressBar progress={goalProgress} color="bg-indigo-500" containerClass="bg-neutral-950 h-3 rounded-full" />
                   </div>
+                    );
+                  })}
                 </div>
               </Card>
             )}

@@ -1,8 +1,12 @@
 import { getCareerTrack } from '../config/careers';
 import { SKILL_TAXONOMY, ALL_SKILLS } from '../config/skillTaxonomy';
 import { buildSkillQuestion, type QuizDifficulty, type QuizQuestionMeta } from '../content/quizBank';
+import { supabase, isSupabaseConfigured } from '../supabase/client';
 import type { UserProfile } from '../types';
+import { EngagementService } from './engagementService';
+import { MissionService } from './missionService';
 import { QuizService } from './quizService';
+import { RoadmapEngine } from './roadmapEngine';
 import { XPService } from './xpService';
 
 export interface QuizAttemptSummary {
@@ -21,6 +25,19 @@ export interface QuizDeck {
   passThreshold: number;
   xpReward: number;
   attempt?: QuizAttemptSummary;
+  careerGoal?: string;
+  focusSkill?: string;
+}
+
+export interface QuizHistoryRow {
+  id: string;
+  deckId: string;
+  mode: 'daily' | 'weekly';
+  score: number;
+  passed: boolean;
+  xpEarned: number;
+  createdAt: string;
+  focusSkill?: string;
 }
 
 const DAILY_TARGET: Record<QuizDifficulty, number> = { Hard: 5, Medium: 3, Easy: 2 };
@@ -41,6 +58,12 @@ const TRACK_CATEGORIES: Record<ReturnType<typeof getCareerTrack>, string[]> = {
   blockchain: ['Blockchain & Web3', 'Backend & APIs', 'Programming Languages', 'Tools & Practices'],
   product: ['Tools & Practices', 'Web & Frontend', 'Backend & APIs'],
 };
+
+function todayKey(): string {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().split('T')[0];
+}
 
 function hashSeed(str: string): number {
   let h = 0;
@@ -75,10 +98,8 @@ function weekKey(date = new Date()): string {
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   d.setDate(diff);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().split('T')[0];
 }
 
 function getTrackSkills(track: ReturnType<typeof getCareerTrack>): string[] {
@@ -133,59 +154,160 @@ function saveAttempt(userId: string, deckId: string, attempt: QuizAttemptSummary
   localStorage.setItem(`quiz_attempt_${userId}_${deckId}`, JSON.stringify(attempt));
 }
 
-export const QuizDeckService = {
-  getDailyQuiz(userId: string, profile: UserProfile): QuizDeck {
-    const today = new Date().toISOString().split('T')[0];
-    const skills = Array.from(new Set([
-      ...profile.skills.learning.map((s) => s.name),
-      ...profile.skills.known.map((s) => s.name),
-    ]));
+async function getLatestAttempt(userId: string, deckId: string): Promise<QuizAttemptSummary | undefined> {
+  const localAttempt = readAttempt(userId, deckId);
+  if (!isSupabaseConfigured) return localAttempt;
 
+  const { data } = await supabase
+    .from('quiz_attempts')
+    .select('score, passed, xp_earned, created_at')
+    .eq('user_id', userId)
+    .eq('deck_id', deckId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return localAttempt;
+  return {
+    score: data.score || 0,
+    passed: Boolean(data.passed),
+    xpEarned: data.xp_earned || 0,
+    awarded: (data.xp_earned || 0) > 0,
+    completedAt: data.created_at,
+  };
+}
+
+function profileSkillOrder(profile: UserProfile, focusSkill?: string): string[] {
+  const learning = profile.skills.learning
+    .filter((s) => ['Learning', 'Practicing', 'Assessing'].includes(s.status || 'Learning'))
+    .map((s) => s.name);
+  const known = profile.skills.known.map((s) => s.name);
+  return Array.from(new Set([focusSkill, ...learning, ...known].filter(Boolean) as string[]));
+}
+
+function buildDeckFromSkills(params: {
+  userId: string;
+  profile: UserProfile;
+  mode: 'daily' | 'weekly';
+  deckId: string;
+  seedText: string;
+  title: string;
+  activeSkills: string[];
+  fallbackSkills: string[];
+  targets: Record<QuizDifficulty, number>;
+  focusSkill?: string;
+}): QuizDeck {
+  const seed = hashSeed(params.seedText);
+  const hard = pickQuestions(params.activeSkills, 'Hard', params.targets.Hard, seed + 1, params.fallbackSkills, params.profile.goals.career);
+  const medium = pickQuestions(params.activeSkills, 'Medium', params.targets.Medium, seed + 2, params.fallbackSkills, params.profile.goals.career);
+  const easy = pickQuestions(params.activeSkills, 'Easy', params.targets.Easy, seed + 3, params.fallbackSkills, params.profile.goals.career);
+  const questions = seededShuffle([...hard, ...medium, ...easy], seed + 99);
+
+  return {
+    id: params.deckId,
+    mode: params.mode,
+    title: params.title,
+    questions,
+    passThreshold: 70,
+    xpReward: calcXp(questions),
+    careerGoal: params.profile.goals.career,
+    focusSkill: params.focusSkill,
+    attempt: readAttempt(params.userId, params.deckId),
+  };
+}
+
+async function saveDeck(userId: string, deck: QuizDeck): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('quiz_decks').upsert({
+    user_id: userId,
+    deck_key: deck.id,
+    mode: deck.mode,
+    quiz_date: deck.mode === 'daily' ? todayKey() : weekKey(),
+    title: deck.title,
+    career_goal: deck.careerGoal,
+    focus_skill: deck.focusSkill,
+    questions: deck.questions,
+    pass_threshold: deck.passThreshold,
+    xp_reward: deck.xpReward,
+  });
+  if (error) console.warn('quiz deck persistence failed', error);
+}
+
+async function getPersistedDeck(userId: string, deckId: string): Promise<QuizDeck | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data, error } = await supabase
+    .from('quiz_decks')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('deck_key', deckId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return {
+    id: data.deck_key,
+    mode: data.mode,
+    title: data.title,
+    questions: (data.questions || []) as QuizQuestionMeta[],
+    passThreshold: data.pass_threshold || 70,
+    xpReward: data.xp_reward || 0,
+    careerGoal: data.career_goal,
+    focusSkill: data.focus_skill,
+    attempt: await getLatestAttempt(userId, data.deck_key),
+  };
+}
+
+export const QuizDeckService = {
+  async getDailyQuiz(userId: string, profile: UserProfile): Promise<QuizDeck> {
+    const today = todayKey();
+    const focus = await RoadmapEngine.getCurrentFocus(userId);
     const track = getCareerTrack(profile.goals.career);
     const fallbackSkills = getTrackSkills(track).length ? getTrackSkills(track) : ALL_SKILLS;
-    const activeSkills = skills.length ? skills : fallbackSkills;
-    const seed = hashSeed(`${userId}-${today}-${activeSkills.join('|')}`);
-
-    const hard = pickQuestions(activeSkills, 'Hard', DAILY_TARGET.Hard, seed + 1, fallbackSkills, profile.goals.career);
-    const medium = pickQuestions(activeSkills, 'Medium', DAILY_TARGET.Medium, seed + 2, fallbackSkills, profile.goals.career);
-    const easy = pickQuestions(activeSkills, 'Easy', DAILY_TARGET.Easy, seed + 3, fallbackSkills, profile.goals.career);
-
-    const questions = seededShuffle([...hard, ...medium, ...easy], seed + 99);
+    const activeSkills = profileSkillOrder(profile, focus?.skillName).length
+      ? profileSkillOrder(profile, focus?.skillName)
+      : fallbackSkills;
     const deckId = `daily-${today}`;
 
-    return {
-      id: deckId,
+    const persisted = await getPersistedDeck(userId, deckId);
+    if (persisted) return persisted;
+
+    const deck = buildDeckFromSkills({
+      userId,
+      profile,
       mode: 'daily',
-      title: 'Daily Skill Quiz',
-      questions,
-      passThreshold: 70,
-      xpReward: calcXp(questions),
-      attempt: readAttempt(userId, deckId),
-    };
+      deckId,
+      title: focus?.skillName ? `Daily ${focus.skillName} Quiz` : 'Daily Skill Quiz',
+      seedText: `${userId}-${today}-${profile.goals.career}-${activeSkills.join('|')}`,
+      activeSkills,
+      fallbackSkills,
+      targets: DAILY_TARGET,
+      focusSkill: focus?.skillName,
+    });
+    await saveDeck(userId, deck);
+    return { ...deck, attempt: await getLatestAttempt(userId, deck.id) };
   },
 
-  getWeeklyQuiz(userId: string, profile: UserProfile): QuizDeck {
+  async getWeeklyQuiz(userId: string, profile: UserProfile): Promise<QuizDeck> {
     const track = getCareerTrack(profile.goals.career);
     const week = weekKey();
     const deckId = `weekly-${track}-${week}`;
     const trackSkills = getTrackSkills(track).length ? getTrackSkills(track) : ALL_SKILLS;
-    const seed = hashSeed(`${profile.goals.career}-${week}`);
 
-    const hard = pickQuestions(trackSkills, 'Hard', WEEKLY_TARGET.Hard, seed + 11, trackSkills, profile.goals.career);
-    const medium = pickQuestions(trackSkills, 'Medium', WEEKLY_TARGET.Medium, seed + 22, trackSkills, profile.goals.career);
-    const easy = pickQuestions(trackSkills, 'Easy', WEEKLY_TARGET.Easy, seed + 33, trackSkills, profile.goals.career);
+    const persisted = await getPersistedDeck(userId, deckId);
+    if (persisted) return persisted;
 
-    const questions = seededShuffle([...hard, ...medium, ...easy], seed + 77);
-
-    return {
-      id: deckId,
+    const deck = buildDeckFromSkills({
+      userId,
+      profile,
       mode: 'weekly',
+      deckId,
       title: `Weekly ${profile.goals.career} Quiz`,
-      questions,
-      passThreshold: 70,
-      xpReward: calcXp(questions),
-      attempt: readAttempt(userId, deckId),
-    };
+      seedText: `${profile.goals.career}-${track}-${week}`,
+      activeSkills: trackSkills,
+      fallbackSkills: trackSkills,
+      targets: WEEKLY_TARGET,
+    });
+    await saveDeck(userId, deck);
+    return { ...deck, attempt: await getLatestAttempt(userId, deck.id) };
   },
 
   async submitAttempt(userId: string, deck: QuizDeck, answers: Record<string, number>) {
@@ -209,6 +331,64 @@ export const QuizDeckService = {
     };
     saveAttempt(userId, deck.id, attempt);
 
+    if (isSupabaseConfigured) {
+      const fullPayload = {
+        user_id: userId,
+        deck_id: deck.id,
+        quiz_date: deck.mode === 'daily' ? todayKey() : weekKey(),
+        mode: deck.mode,
+        score,
+        passed,
+        answers,
+        questions: deck.questions,
+        xp_earned: xpEarned,
+        career_goal: deck.careerGoal,
+        focus_skill: deck.focusSkill,
+      };
+      const { error } = await supabase.from('quiz_attempts').insert(fullPayload);
+      if (error) {
+        await supabase.from('quiz_attempts').insert({
+          user_id: userId,
+          score,
+          answers,
+          xp_earned: xpEarned,
+        });
+      }
+    }
+
+    await EngagementService.trackEvent(userId, 'quiz_completed', {
+      deckId: deck.id,
+      mode: deck.mode,
+      score,
+      passed,
+      xpEarned,
+      focusSkill: deck.focusSkill,
+    });
+    if (passed) await MissionService.completeByTarget(userId, 'quiz');
+
     return attempt;
+  },
+
+  async getAttemptHistory(userId: string): Promise<QuizHistoryRow[]> {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from('quiz_attempts')
+      .select('id, deck_id, mode, score, passed, xp_earned, created_at, focus_skill')
+      .eq('user_id', userId)
+      .not('deck_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) return [];
+    return (data || []).map((row) => ({
+      id: row.id,
+      deckId: row.deck_id,
+      mode: row.mode || 'daily',
+      score: row.score || 0,
+      passed: Boolean(row.passed),
+      xpEarned: row.xp_earned || 0,
+      createdAt: row.created_at,
+      focusSkill: row.focus_skill,
+    }));
   },
 };

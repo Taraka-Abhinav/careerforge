@@ -17,7 +17,7 @@ const localProgressKey = (userId: string) => `module_progress_${userId}`;
 
 const MODULE_TEMPLATES = [
   { type: 'lesson' as const, title: 'Core Concepts & Theory', xp: 15 },
-  { type: 'practice' as const, title: 'Practice Sandbox', xp: 25 },
+  { type: 'practice' as const, title: 'Practice Sandbox', xp: 0 },
   { type: 'quiz' as const, title: 'Contextual Quiz', xp: 40 },
   { type: 'assessment' as const, title: 'Mastery Evaluation', xp: 60 },
   { type: 'project' as const, title: 'Mini Project', xp: 100 },
@@ -119,13 +119,14 @@ export const ModuleService = {
       const raw = m.content as Record<string, unknown>;
       const needsEnrich = !raw?.theorySections && !raw?.problem && !raw?.requirements && !raw?.questions;
       const content = needsEnrich ? getModuleContent(skill.skill_name, career, m.type as ModuleType) : raw;
+      const effectiveXpReward = m.type === 'practice' ? 0 : m.xp_reward;
       return {
         id: m.id,
         skillId: skill.id,
         title: m.title,
         type: m.type as ModuleType,
         content,
-        xpReward: m.xp_reward,
+        xpReward: effectiveXpReward,
         status: prog === 'completed' ? 'completed' : prog === 'in_progress' ? 'in_progress' : prevDone ? 'not_started' : 'locked',
         sortOrder: m.sort_order,
       };
@@ -146,7 +147,7 @@ export const ModuleService = {
     const career = 'Software Engineer';
     const modules: LearningModule[] = [
       { id: 'l1', skillId: 'local', title: 'Core Concepts & Theory', type: 'lesson', content: getModuleContent(name, career, 'lesson'), xpReward: 15, status: 'not_started', sortOrder: 0 },
-      { id: 'p1', skillId: 'local', title: 'Practice Sandbox', type: 'practice', content: getModuleContent(name, career, 'practice'), xpReward: 25, status: 'locked', sortOrder: 1 },
+      { id: 'p1', skillId: 'local', title: 'Practice Sandbox', type: 'practice', content: getModuleContent(name, career, 'practice'), xpReward: 0, status: 'locked', sortOrder: 1 },
       { id: 'q1', skillId: 'local', title: 'Contextual Quiz', type: 'quiz', content: getModuleContent(name, career, 'quiz'), xpReward: 40, status: 'locked', sortOrder: 2 },
       { id: 'a1', skillId: 'local', title: 'Mastery Evaluation', type: 'assessment', content: getModuleContent(name, career, 'assessment'), xpReward: 60, status: 'locked', sortOrder: 3 },
       { id: 'pr1', skillId: 'local', title: 'Mini Project', type: 'project', content: getModuleContent(name, career, 'project'), xpReward: 100, status: 'locked', sortOrder: 4 },
@@ -154,7 +155,7 @@ export const ModuleService = {
     return { skillId: 'local', skillName: name, skillSlug, status: 'Learning', modules, progressMap: {} };
   },
 
-  async completeModule(userId: string, moduleId: string, xpReward: number, sourceType: 'lesson' | 'practice' | 'assessment' | 'project' | 'module' = 'module') {
+  async markModuleCompleted(userId: string, moduleId: string) {
     if (isSupabaseConfigured) {
       await supabase.from('user_module_progress').upsert({
         user_id: userId,
@@ -168,13 +169,17 @@ export const ModuleService = {
       map[moduleId] = 'completed';
       localStorage.setItem(key, JSON.stringify(map));
     }
+  },
+
+  async completeModule(userId: string, moduleId: string, xpReward: number, sourceType: 'lesson' | 'practice' | 'quiz' | 'assessment' | 'project' | 'module' = 'module') {
+    await this.markModuleCompleted(userId, moduleId);
     return XPService.awardOnce(userId, sourceType, moduleId, xpReward);
   },
 
-  async checkAndMasterSkill(userId: string, skillId: string) {
-    if (!isSupabaseConfigured) return;
+  async checkAndMasterSkill(userId: string, skillId: string): Promise<boolean> {
+    if (!isSupabaseConfigured) return false;
     const { data: modules } = await supabase.from('learning_modules').select('id').eq('skill_id', skillId);
-    if (!modules?.length) return;
+    if (!modules?.length) return false;
     const { data: done } = await supabase
       .from('user_module_progress')
       .select('module_id')
@@ -183,6 +188,8 @@ export const ModuleService = {
       .in('module_id', modules.map((m) => m.id));
     if (done && done.length >= modules.length) {
       await supabase.from('skills').update({ status: 'Mastered' }).eq('id', skillId);
+      return true;
     }
+    return false;
   },
 };

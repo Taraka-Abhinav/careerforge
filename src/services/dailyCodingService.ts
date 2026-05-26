@@ -3,6 +3,8 @@ import { DAILY_PROBLEM_BANK, type DailyCodingProblemTemplate } from '../content/
 import { XPService } from './xpService';
 import type { UserProfile } from '../types';
 import { ValidationService } from './validationService';
+import { GoalService } from './goalService';
+import { MissionService } from './missionService';
 
 export interface DailyCodingProblem {
   id: string;
@@ -236,6 +238,10 @@ export const DailyCodingService = {
 
     const awardKey = problemId.startsWith('local-') ? `${problemId}-${today}` : problemId;
     const { awarded } = await XPService.awardOnce(userId, 'challenge', `daily-code-${awardKey}`, template.xpReward);
+    if (awarded) {
+      await GoalService.recordEvent(userId, 'challenge');
+      await MissionService.completeByTarget(userId, 'challenge');
+    }
     return {
       passed: true,
       awarded,

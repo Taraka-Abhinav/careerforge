@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { BrainCircuit, Trophy } from 'lucide-react';
 import { APP_NAV } from '../../config/navigation';
 import { supabase } from '../../supabase/client';
+import { EngagementService } from '../../services/engagementService';
 import { ProgressService } from '../../services/progressService';
 import type { UserProgress } from '../../types';
 import { cn } from '../../utils/cn';
@@ -23,6 +24,9 @@ export function AppShell({ children }: AppShellProps) {
       if (data.user && isMounted) {
         const p = await ProgressService.getProgress(data.user.id);
         if (isMounted) setProgress(p);
+        await EngagementService.trackActiveDay(data.user.id);
+        const active = await ProgressService.recordActivity(data.user.id);
+        if (isMounted) setProgress(active);
       }
     };
 

@@ -1,4 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../supabase/client';
+import { EngagementService } from './engagementService';
+import { MissionService } from './missionService';
 import { XPService } from './xpService';
 import type { QuizQuestion } from '../types';
 
@@ -76,10 +78,20 @@ export const QuizService = {
         user_id: userId,
         module_id: moduleId,
         score,
+        passed,
         answers,
+        questions,
         xp_earned: xpEarned,
       });
     }
+
+    await EngagementService.trackEvent(userId, 'quiz_completed', {
+      moduleId,
+      score,
+      passed,
+      xpEarned,
+    });
+    if (passed) await MissionService.completeByTarget(userId, 'quiz');
 
     return { score, passed, xpEarned, awarded };
   },

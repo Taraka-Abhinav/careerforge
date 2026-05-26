@@ -6,6 +6,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ChallengeService } from '../services/challengeService';
+import { SubscriptionService } from '../services/subscriptionService';
 import { supabase } from '../supabase/client';
 import type { ChallengeRecord } from '../types';
 import confetti from 'canvas-confetti';
@@ -21,11 +22,13 @@ export default function Arena() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       setLoadError(false);
+      setLocked(false);
       const { data } = await supabase.auth.getUser();
       const uid = data.user?.id || null;
       setUserId(uid);
@@ -34,6 +37,20 @@ export default function Arena() {
         setLoading(false);
         return;
       }
+      const daily = await ChallengeService.assignDailyChallenges(uid);
+      const isDaily = daily.some((item) => item.id === challengeId);
+      const canUseUnlimited = await SubscriptionService.canUseFeature(uid, 'unlimited_challenges');
+
+      if (!canUseUnlimited && !isDaily) {
+        setLocked(true);
+        setLoading(false);
+        return;
+      }
+
+      if (canUseUnlimited && !isDaily) {
+        void SubscriptionService.trackFeatureUsage(uid, 'unlimited_challenges');
+      }
+
       const c = await ChallengeService.getChallenge(challengeId, uid);
       if (c) {
         setChallenge(c);
@@ -79,6 +96,20 @@ export default function Arena() {
       <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center gap-4 p-6">
         <p className="text-neutral-400">Challenge not found.</p>
         <Button onClick={() => navigate('/challenges')}>Back to Code Arena</Button>
+      </div>
+    );
+  }
+
+  if (locked) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center gap-4 p-6">
+        <p className="text-neutral-400 text-center max-w-md">
+          This challenge is part of the full Code Arena library. Upgrade to CareerForge Pro to unlock unlimited challenges.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={() => navigate('/challenges')}>Back to Code Arena</Button>
+          <Button variant="secondary" onClick={() => navigate('/settings')}>View plans</Button>
+        </div>
       </div>
     );
   }

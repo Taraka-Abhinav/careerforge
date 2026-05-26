@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Code2, BookOpen, ListChecks, Lightbulb, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { BookOpen, CheckCircle2, Code2, ExternalLink, Lightbulb, ListChecks } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -12,6 +12,10 @@ interface ModuleRendererProps {
   onComplete: () => void;
   completing: boolean;
   quizSlot?: React.ReactNode;
+}
+
+function xpLabel(module: LearningModule): string {
+  return module.xpReward > 0 ? ` (+${module.xpReward} XP)` : '';
 }
 
 function CodeBlock({ code, title }: { code: string; title?: string }) {
@@ -34,6 +38,25 @@ function CodeBlock({ code, title }: { code: string; title?: string }) {
         </button>
       </div>
     </div>
+  );
+}
+
+function ChecklistCard({ title, items }: { title: string; items?: string[] }) {
+  if (!items?.length) return null;
+  return (
+    <Card className="p-5 border-white/5">
+      <h4 className="font-bold text-sm text-neutral-400 mb-3 flex items-center gap-2">
+        <ListChecks className="w-4 h-4" /> {title}
+      </h4>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item} className="text-sm text-neutral-300 flex gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 
@@ -60,32 +83,33 @@ function PracticeModule({
         <p className="text-neutral-300 whitespace-pre-line leading-relaxed">{practice.problem}</p>
       </div>
       <CodeBlock code={practice.starterCode || '// Your solution'} title="Starter code" />
-        <Card className="p-5 border-white/5">
-          <h4 className="font-bold text-sm text-neutral-400 mb-3 flex items-center gap-2"><ListChecks className="w-4 h-4" /> Steps</h4>
-          <ol className="space-y-4">
-            {(practice.steps || []).map((s, i) => {
-              const heading = typeof s === 'string' ? `Step ${i + 1}` : `Step ${i + 1}: ${s.heading}`;
-              const body = typeof s === 'string' ? s : s.body;
-              return (
-                <li key={heading} className="text-sm text-neutral-300">
-                  <span className="font-bold text-white block mb-1">{heading}</span>
-                  <span className="text-neutral-400 leading-relaxed">{body}</span>
-                </li>
-              );
-            })}
-          </ol>
-        </Card>
+      <Card className="p-5 border-white/5">
+        <h4 className="font-bold text-sm text-neutral-400 mb-3 flex items-center gap-2"><ListChecks className="w-4 h-4" /> Steps</h4>
+        <ol className="space-y-4">
+          {(practice.steps || []).map((s, i) => {
+            const heading = typeof s === 'string' ? `Step ${i + 1}` : `Step ${i + 1}: ${s.heading}`;
+            const body = typeof s === 'string' ? s : s.body;
+            return (
+              <li key={heading} className="text-sm text-neutral-300">
+                <span className="font-bold text-white block mb-1">{heading}</span>
+                <span className="text-neutral-400 leading-relaxed">{body}</span>
+              </li>
+            );
+          })}
+        </ol>
+      </Card>
+      <ChecklistCard title="Checkpoints" items={practice.checkpoints} />
       <Button variant="ghost" onClick={() => setShowHints(!showHints)} icon={<Lightbulb className="w-4 h-4" />}>
         {showHints ? 'Hide hints' : 'Show hints'}
       </Button>
       {showHints && (
         <ul className="space-y-2 text-sm text-indigo-300">
-          {(practice.hints || []).map((h) => <li key={h}>• {h}</li>)}
+          {(practice.hints || []).map((h) => <li key={h}>- {h}</li>)}
         </ul>
       )}
       {module.status !== 'completed' && (
         <Button size="lg" className="w-full" onClick={onComplete} disabled={completing}>
-          Mark practice complete (+{module.xpReward} XP)
+          Mark practice complete{xpLabel(module)}
         </Button>
       )}
     </div>
@@ -101,6 +125,7 @@ export function ModuleRenderer({ module, skillName, onComplete, completing, quiz
     return (
       <div className="space-y-8">
         <p className="text-lg text-neutral-300 leading-relaxed">{lesson.overview}</p>
+        <ChecklistCard title="Learning objectives" items={lesson.learningObjectives} />
         <p className="text-neutral-400 leading-relaxed">{lesson.theory}</p>
 
         {sections.map((sec) => (
@@ -121,7 +146,7 @@ export function ModuleRenderer({ module, skillName, onComplete, completing, quiz
         ))}
 
         <div>
-          <h3 className="font-bold text-white mb-4">Resources</h3>
+          <h3 className="font-bold text-white mb-4">Recommended resources</h3>
           <div className="grid gap-3">
             {(lesson.resources || []).map((r) => (
               <Card key={r.title} padding="p-4" className="flex justify-between items-center border-white/5">
@@ -150,9 +175,23 @@ export function ModuleRenderer({ module, skillName, onComplete, completing, quiz
           </Card>
         )}
 
+        {lesson.checkpoints?.length > 0 && (
+          <Card className="p-5 border-white/5">
+            <h3 className="font-bold text-white mb-3">Checkpoints</h3>
+            <div className="space-y-3">
+              {lesson.checkpoints.map((checkpoint) => (
+                <div key={checkpoint.title}>
+                  <div className="text-sm font-bold text-neutral-200">{checkpoint.title}</div>
+                  <div className="text-sm text-neutral-400">{checkpoint.prompt}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {module.status !== 'completed' && module.status !== 'locked' && (
           <Button size="lg" className="w-full" onClick={onComplete} disabled={completing}>
-            Complete lesson (+{module.xpReward} XP)
+            Complete lesson{xpLabel(module)}
           </Button>
         )}
       </div>
@@ -182,7 +221,7 @@ export function ModuleRenderer({ module, skillName, onComplete, completing, quiz
         <Card className="p-5 border-white/5">
           <h4 className="font-bold mb-3">Requirements</h4>
           <ul className="space-y-2 text-sm text-neutral-300">
-            {(proj.requirements || []).map((r) => <li key={r} className="flex gap-2"><span className="text-indigo-400">✓</span>{r}</li>)}
+            {(proj.requirements || []).map((r) => <li key={r} className="flex gap-2"><span className="text-indigo-400">-</span>{r}</li>)}
           </ul>
         </Card>
         <Card className="p-5 border-white/5">
@@ -191,20 +230,21 @@ export function ModuleRenderer({ module, skillName, onComplete, completing, quiz
             {(proj.milestones || []).map((m) => <li key={m}>{m}</li>)}
           </ol>
         </Card>
+        <ChecklistCard title="Completion checkpoints" items={proj.checkpoints} />
         {proj.tasks && (
           <Card className="p-5 border-indigo-500/20">
             <h4 className="font-bold mb-3">Assessment tasks</h4>
-            <ul className="text-sm text-neutral-300 space-y-2">{proj.tasks.map((t) => <li key={t}>• {t}</li>)}</ul>
+            <ul className="text-sm text-neutral-300 space-y-2">{proj.tasks.map((t) => <li key={t}>- {t}</li>)}</ul>
           </Card>
         )}
         {module.status !== 'completed' && (
           <Button size="lg" className="w-full" onClick={onComplete} disabled={completing}>
-            Submit {module.type} (+{module.xpReward} XP)
+            Submit {module.type}{xpLabel(module)}
           </Button>
         )}
       </div>
     );
   }
 
-  return <p className="text-neutral-400">Content loading for {skillName}…</p>;
+  return <p className="text-neutral-400">Content loading for {skillName}...</p>;
 }
