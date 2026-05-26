@@ -4,6 +4,8 @@ import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { getProblemsForSkill, runSkillProblemTest, type SkillConceptProblem } from '../../content/skillProblems';
+import { GoalService } from '../../services/goalService';
+import { MissionService } from '../../services/missionService';
 import { XPService } from '../../services/xpService';
 import { cn } from '../../utils/cn';
 
@@ -33,8 +35,12 @@ export function SkillProblemsPanel({ skillName, userId }: SkillProblemsPanelProp
     setResult(passed ? 'pass' : 'fail');
     if (passed) {
       const key = `skill-problem-${active.id}`;
-      const { awarded } = await XPService.awardOnce(userId, 'practice', key, active.xpReward);
-      if (awarded) setCompleted((c) => ({ ...c, [active.id]: true }));
+      const { awarded } = await XPService.awardOnce(userId, 'challenge', key, active.xpReward);
+      if (awarded) {
+        await GoalService.recordEvent(userId, 'challenge');
+        await MissionService.completeByTarget(userId, 'challenge');
+        setCompleted((c) => ({ ...c, [active.id]: true }));
+      }
     }
   };
 

@@ -1,36 +1,26 @@
 import { supabase, isSupabaseConfigured } from '../supabase/client';
+import { EngagementService, type EngagementEventType } from './engagementService';
 import { ProgressService } from './progressService';
-import type { UserProgress } from '../types';
+import type { UserProgress, XPSourceType } from '../types';
 
-export type XPSourceType =
-  | 'lesson'
-  | 'practice'
-  | 'quiz'
-  | 'assessment'
-  | 'challenge'
-  | 'project'
-  | 'milestone'
-  | 'mission'
-  | 'goal'
-  | 'module';
+const XP_EARNING_SOURCES = new Set<XPSourceType>([
+  'lesson',
+  'quiz',
+  'assessment',
+  'challenge',
+  'project',
+]);
+
+const EVENT_BY_SOURCE: Partial<Record<XPSourceType, EngagementEventType>> = {
+  lesson: 'lesson_completed',
+  quiz: 'quiz_completed',
+  challenge: 'challenge_completed',
+  assessment: 'assessment_completed',
+  project: 'project_completed',
+};
 
 function calculateLevel(xp: number): number {
   return Math.floor(Math.sqrt(Math.max(0, xp) / 50)) + 1;
-}
-
-function toDateString(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
-
-function updateStreak(progress: UserProgress): number {
-  const today = toDateString(new Date());
-  const last = progress.lastActiveDate?.split('T')[0] || '';
-  if (last === today) return progress.streakDays;
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = toDateString(yesterday);
-  if (last === yesterdayStr) return progress.streakDays + 1;
-  return 1;
 }
 
 const localXpEventsKey = (userId: string) => `xp_events_${userId}`;
@@ -53,6 +43,10 @@ function saveLocalXpEvent(userId: string, key: string) {
 export const XPService = {
   calculateLevel,
 
+  isXpEarningSource(sourceType: XPSourceType): boolean {
+    return XP_EARNING_SOURCES.has(sourceType);
+  },
+
   async hasAwarded(userId: string, sourceType: XPSourceType, sourceId: string): Promise<boolean> {
     const key = `${sourceType}:${sourceId}`;
     if (!isSupabaseConfigured) return getLocalXpEvents(userId).has(key);
@@ -72,7 +66,7 @@ export const XPService = {
     sourceId: string,
     xpAmount: number
   ): Promise<{ progress: UserProgress; leveledUp: boolean; awarded: boolean }> {
-    if (xpAmount <= 0) {
+    if (!this.isXpEarningSource(sourceType) || xpAmount <= 0) {
       const progress = await ProgressService.getProgress(userId);
       return { progress, leveledUp: false, awarded: false };
     }
@@ -93,27 +87,37 @@ export const XPService = {
         source_id: sourceId,
         amount: xpAmount,
       });
-      if (error && error.code !== '23505') {
-        console.error('xp_events insert failed', error);
+
+      if (error) {
+        if (error.code !== '23505') console.error('xp_events insert failed', error);
+        const progress = await ProgressService.getProgress(userId);
+        return { progress, leveledUp: false, awarded: false };
       }
     }
 
     const current = await ProgressService.getProgress(userId);
-    const newXp = current.xp + xpAmount;
+    const activeProgress = ProgressService.applyActivity(current);
+    const newXp = activeProgress.xp + xpAmount;
     const newLevel = calculateLevel(newXp);
-    const leveledUp = newLevel > current.level;
-    const streakDays = updateStreak(current);
+    const leveledUp = newLevel > activeProgress.level;
 
     const updated: UserProgress = {
+      ...activeProgress,
       xp: newXp,
       level: newLevel,
-      streakDays,
-      lastActiveDate: new Date().toISOString(),
     };
     await ProgressService.saveProgress(userId, updated);
+
+    const eventType = EVENT_BY_SOURCE[sourceType];
+    if (eventType) {
+      await EngagementService.trackEvent(userId, eventType, { sourceId, xpAmount });
+    }
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('xp-updated', { detail: { progress: updated } }));
     }
     return { progress: updated, leveledUp, awarded: true };
   },
 };
+
+export type { XPSourceType };

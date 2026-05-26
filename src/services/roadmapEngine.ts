@@ -8,7 +8,7 @@ import { ProfileService } from './profileService';
 
 const MODULE_TEMPLATES = [
   { type: 'lesson', title: 'Core Concepts & Theory', xp: 15 },
-  { type: 'practice', title: 'Practice Sandbox', xp: 25 },
+  { type: 'practice', title: 'Practice Sandbox', xp: 0 },
   { type: 'quiz', title: 'Contextual Quiz', xp: 40 },
   { type: 'assessment', title: 'Mastery Evaluation', xp: 60 },
   { type: 'project', title: 'Mini Project', xp: 100 },

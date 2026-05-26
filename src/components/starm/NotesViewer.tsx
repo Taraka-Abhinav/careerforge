@@ -1,10 +1,13 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BookOpen, ChevronDown, ChevronRight, Highlighter, Sparkles } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
 import type { NoteSection } from '../../services/starmService';
 import { StarMCoachPanel } from './StarMCoachPanel';
 import { StarMService, type CoachResponse } from '../../services/starmService';
+import { SubscriptionService } from '../../services/subscriptionService';
 import { RichNoteText } from '../notes/RichNoteText';
 
 interface NotesViewerProps {
@@ -21,17 +24,31 @@ export function NotesViewer({ sections, skillName, careerGoal, userId }: NotesVi
   const [coach, setCoach] = useState<CoachResponse | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
+  const [mentorAllowed, setMentorAllowed] = useState(true);
+  const navigate = useNavigate();
 
   const handleMouseUp = useCallback(() => {
     const text = window.getSelection()?.toString().trim();
     if (text && text.length > 3) setSelection(text);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    SubscriptionService.canUseFeature(userId, 'ai_mentor').then((allowed) => {
+      if (isMounted) setMentorAllowed(allowed);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [userId]);
+
   const askStarM = async () => {
     if (!selection) return;
+    if (!mentorAllowed) return;
     setShowCoach(true);
     setCoachLoading(true);
     setCoach(null);
+    await SubscriptionService.trackFeatureUsage(userId, 'ai_mentor');
     const res = await StarMService.explainHighlight(userId, {
       selection,
       skillName,
@@ -54,11 +71,23 @@ export function NotesViewer({ sections, skillName, careerGoal, userId }: NotesVi
           </div>
         </div>
         {selection && (
-          <Button size="sm" icon={<Highlighter className="w-4 h-4" />} onClick={askStarM} className="shrink-0">
+          <Button size="sm" icon={<Highlighter className="w-4 h-4" />} onClick={askStarM} className="shrink-0" disabled={!mentorAllowed}>
             Ask StarM
           </Button>
         )}
       </div>
+
+      {!mentorAllowed && (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-amber-200">
+          <div className="flex items-center gap-2">
+            <Badge color="amber">Pro</Badge>
+            <span>StarM AI Coach is a Pro feature.</span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => navigate('/settings')}>
+            View plans
+          </Button>
+        </div>
+      )}
 
       {sections.map((section) => {
         const isOpen = expanded[section.id] !== false;

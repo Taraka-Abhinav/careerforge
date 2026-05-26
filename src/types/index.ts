@@ -106,11 +106,11 @@ export interface RoadmapPhase {
 
 export type XPSourceType =
   | 'lesson'
-  | 'practice'
   | 'quiz'
   | 'assessment'
   | 'challenge'
   | 'project'
+  | 'practice'
   | 'milestone'
   | 'mission'
   | 'goal'
@@ -134,6 +134,8 @@ export interface ChallengeRecord {
   starterCode?: string;
   testCases?: { input: Record<string, unknown>; expected: unknown }[];
   invoke?: string;
+  assignedDate?: string;
+  personalizedReason?: string;
 }
 
 export interface DailyChallenge {
@@ -184,6 +186,8 @@ export interface WeeklyGoal {
   currentCount: number;
   status: 'active' | 'completed' | 'failed';
   xpReward: number;
+  metric?: 'lesson' | 'challenge' | 'milestone';
+  targetRef?: string;
 }
 
 export interface UserProgress {
@@ -191,6 +195,9 @@ export interface UserProgress {
   level: number;
   streakDays: number;
   lastActiveDate: string;
+  weeklyStreak?: number;
+  longestStreak?: number;
+  lastWeeklyActive?: string;
 }
 
 export { SKILL_TAXONOMY, ALL_SKILLS } from '../config/skillTaxonomy';
