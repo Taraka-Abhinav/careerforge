@@ -10,13 +10,26 @@ export default function HomeRedirect() {
   useEffect(() => {
     let isMounted = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!isMounted) return;
-      if (session) {
-        setAuthenticated(true);
-        setLoading(false);
+    const restoreSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        if (session) {
+          setAuthenticated(true);
+          setLoading(false);
+          return;
+        }
+
+        const { data: refresh } = await supabase.auth.refreshSession();
+        if (!isMounted) return;
+        setAuthenticated(!!refresh.session);
+      } catch {
+        if (!isMounted) return;
+        setAuthenticated(false);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    });
+    };
 
     const {
       data: { subscription },
@@ -27,6 +40,8 @@ export default function HomeRedirect() {
         setLoading(false);
       }
     });
+
+    restoreSession();
 
     return () => {
       isMounted = false;
