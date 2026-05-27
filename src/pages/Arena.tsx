@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ChallengeService } from '../services/challengeService';
 import { SubscriptionService } from '../services/subscriptionService';
+import { EngagementService } from '../services/engagementService';
 import { supabase } from '../supabase/client';
 import type { ChallengeRecord } from '../types';
 import confetti from 'canvas-confetti';
@@ -23,6 +24,7 @@ export default function Arena() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -55,6 +57,7 @@ export default function Arena() {
       if (c) {
         setChallenge(c);
         setCode(c.starterCode || '// Write your solution here\n');
+        setStartedAt(Date.now());
         const done = await ChallengeService.isCompleted(uid, challengeId);
         if (done) setSuccess(true);
       } else {
@@ -70,6 +73,13 @@ export default function Arena() {
     setFailed(false);
 
     const result = await ChallengeService.submit(userId, challengeId, code);
+    const durationSeconds = Math.max(1, Math.round((Date.now() - (startedAt || Date.now())) / 1000));
+    await EngagementService.trackEvent(
+      userId,
+      'learning_time',
+      { source: 'challenge', challengeId, passed: result.passed },
+      durationSeconds
+    );
 
     if (result.passed) {
       setSuccess(true);

@@ -12,7 +12,8 @@ import { supabase } from '../supabase/client';
 import { ProfileService } from '../services/profileService';
 import { ProgressService } from '../services/progressService';
 import { RoadmapEngine } from '../services/roadmapEngine';
-import type { UserProfile, UserProgress } from '../types';
+import { CareerOutcomeService } from '../services/careerOutcomeService';
+import type { CareerOutcome, UserProfile, UserProgress } from '../types';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -20,6 +21,8 @@ export default function ProfilePage() {
   const [roadmapPercent, setRoadmapPercent] = useState(0);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<UserProfile | null>(null);
+  const [careerOutcome, setCareerOutcome] = useState<CareerOutcome | null>(null);
+  const [careerDraft, setCareerDraft] = useState<CareerOutcome | null>(null);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
@@ -35,12 +38,15 @@ export default function ProfilePage() {
     }
     const p = await ProfileService.getProfile(user.id);
     const prog = await ProgressService.getProgress(user.id);
+    const outcome = await CareerOutcomeService.getOutcome(user.id);
     const phases = await RoadmapEngine.getPhases(user.id);
     const total = phases.flatMap((ph) => ph.items.filter((i) => i.type === 'skill')).length;
     const mastered = p?.skills.known.length || 0;
     setRoadmapPercent(total ? Math.min(100, Math.round((mastered / total) * 100)) : 0);
     setProfile(p);
     setDraft(p);
+    setCareerOutcome(outcome);
+    setCareerDraft(outcome);
     setProgress(prog);
   };
 
@@ -48,14 +54,21 @@ export default function ProfilePage() {
     if (!draft) return;
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setSaving(false);
+      return;
+    }
     await ProfileService.saveProfile(user.id, { ...draft, isComplete: true });
+    if (careerDraft) {
+      await CareerOutcomeService.saveOutcome(user.id, careerDraft);
+      setCareerOutcome(careerDraft);
+    }
     setProfile(draft);
     setEditing(false);
     setSaving(false);
   };
 
-  if (!profile || !progress) {
+  if (!profile || !progress || !careerOutcome) {
     return (
       <AppShell>
         <div className="text-neutral-400 text-center py-20">Loading profile…</div>
@@ -64,6 +77,7 @@ export default function ProfilePage() {
   }
 
   const p = editing && draft ? draft : profile;
+  const outcome = editing && careerDraft ? careerDraft : careerOutcome;
   const xpToNext = Math.pow(progress.level, 2) * 50 - progress.xp;
 
   return (
@@ -88,13 +102,29 @@ export default function ProfilePage() {
                 <Button variant="secondary" icon={<Sparkles className="w-4 h-4" />} onClick={() => navigate('/onboarding?mode=edit')}>
                   Edit wizard
                 </Button>
-                <Button variant="secondary" icon={<Pencil className="w-4 h-4" />} onClick={() => setEditing(true)}>
+                <Button
+                  variant="secondary"
+                  icon={<Pencil className="w-4 h-4" />}
+                  onClick={() => {
+                    setCareerDraft(careerOutcome);
+                    setEditing(true);
+                  }}
+                >
                   Edit profile
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="ghost" onClick={() => { setEditing(false); setDraft(profile); }}>Cancel</Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setEditing(false);
+                    setDraft(profile);
+                    setCareerDraft(careerOutcome);
+                  }}
+                >
+                  Cancel
+                </Button>
                 <Button icon={<Save className="w-4 h-4" />} onClick={save} disabled={saving}>
                   {saving ? 'Saving…' : 'Save'}
                 </Button>
@@ -177,6 +207,99 @@ export default function ProfilePage() {
               <div><span className="text-neutral-500 block mb-1">Dream company</span><span className="font-bold">{p.goals.dreamCompany || '—'}</span></div>
             </div>
           </Card>
+
+          {outcome && (
+            <Card className="p-6 border-white/5 space-y-4 md:col-span-2">
+              <h2 className="font-bold flex items-center gap-2"><Target className="w-5 h-5 text-emerald-400" /> Career outcomes</h2>
+              {editing && careerDraft ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-white text-sm"
+                    value={careerDraft.resumeUrl}
+                    onChange={(e) => setCareerDraft({ ...careerDraft, resumeUrl: e.target.value })}
+                    placeholder="Resume link (PDF, Drive, Notion)"
+                  />
+                  <input
+                    className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-white text-sm"
+                    value={careerDraft.portfolioUrl}
+                    onChange={(e) => setCareerDraft({ ...careerDraft, portfolioUrl: e.target.value })}
+                    placeholder="Portfolio or GitHub link"
+                  />
+                  <input
+                    className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-white text-sm md:col-span-2"
+                    value={careerDraft.targetRoles.join(', ')}
+                    onChange={(e) => {
+                      const roles = e.target.value.split(',').map((r) => r.trim()).filter(Boolean);
+                      setCareerDraft({ ...careerDraft, targetRoles: roles });
+                    }}
+                    placeholder="Target roles (comma separated)"
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:col-span-2">
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-white text-sm"
+                      value={careerDraft.interviewPracticeCount}
+                      onChange={(e) => setCareerDraft({ ...careerDraft, interviewPracticeCount: Math.max(0, Number(e.target.value)) })}
+                      placeholder="Interview practice"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-white text-sm"
+                      value={careerDraft.applicationsCount}
+                      onChange={(e) => setCareerDraft({ ...careerDraft, applicationsCount: Math.max(0, Number(e.target.value)) })}
+                      placeholder="Applications"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-white text-sm"
+                      value={careerDraft.offersCount}
+                      onChange={(e) => setCareerDraft({ ...careerDraft, offersCount: Math.max(0, Number(e.target.value)) })}
+                      placeholder="Offers"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-neutral-500 block mb-1">Resume</span>
+                    {outcome.resumeUrl ? (
+                      <a href={outcome.resumeUrl} target="_blank" rel="noreferrer" className="text-indigo-400 font-semibold hover:underline">
+                        View resume
+                      </a>
+                    ) : (
+                      <span className="text-neutral-500">—</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-neutral-500 block mb-1">Portfolio</span>
+                    {outcome.portfolioUrl ? (
+                      <a href={outcome.portfolioUrl} target="_blank" rel="noreferrer" className="text-indigo-400 font-semibold hover:underline">
+                        View portfolio
+                      </a>
+                    ) : (
+                      <span className="text-neutral-500">—</span>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <span className="text-neutral-500 block mb-1">Target roles</span>
+                    <div className="flex flex-wrap gap-2">
+                      {outcome.targetRoles.length > 0 ? outcome.targetRoles.map((role) => (
+                        <Badge key={role} color="neutral">{role}</Badge>
+                      )) : <span className="text-neutral-500">—</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6 md:col-span-2 text-neutral-400">
+                    <span>Interview practice: <strong className="text-white">{outcome.interviewPracticeCount}</strong></span>
+                    <span>Applications: <strong className="text-white">{outcome.applicationsCount}</strong></span>
+                    <span>Offers: <strong className="text-white">{outcome.offersCount}</strong></span>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
 
           <Card className="p-6 border-white/5 space-y-4 md:col-span-2">
             <h2 className="font-bold flex items-center gap-2"><BrainCircuit className="w-5 h-5 text-emerald-400" /> Skills</h2>

@@ -8,6 +8,7 @@ export type EngagementEventType =
   | 'assessment_completed'
   | 'project_completed'
   | 'milestone_completed'
+  | 'resource_opened'
   | 'learning_time';
 
 function todayKey(): string {

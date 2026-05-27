@@ -2,6 +2,7 @@ import { CAREER_OPTIONS } from '../config/careers';
 import { ALL_SKILLS } from '../config/skillTaxonomy';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import { fromSkillSlug, toSkillSlug } from '../utils/slug';
+import { getSeedResource } from '../content/publicContentSeed';
 
 export type PublicResourceType = 'career' | 'skill';
 
@@ -99,6 +100,9 @@ export const PublicContentService = {
 
       if (data) return mapRow(data);
     }
+
+    const seeded = getSeedResource(type, slug);
+    if (seeded) return seeded as PublicContentResource;
 
     return type === 'career' ? fallbackCareer(slug) : fallbackSkill(slug);
   },

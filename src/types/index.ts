@@ -200,5 +200,14 @@ export interface UserProgress {
   lastWeeklyActive?: string;
 }
 
+export interface CareerOutcome {
+  resumeUrl: string;
+  portfolioUrl: string;
+  targetRoles: string[];
+  interviewPracticeCount: number;
+  applicationsCount: number;
+  offersCount: number;
+}
+
 export { SKILL_TAXONOMY, ALL_SKILLS } from '../config/skillTaxonomy';
 export { CAREER_OPTIONS, getCareerTrack } from '../config/careers';
