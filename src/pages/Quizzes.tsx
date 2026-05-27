@@ -10,6 +10,7 @@ import { supabase } from '../supabase/client';
 import { ProfileService } from '../services/profileService';
 import { QuizDeckService, type QuizDeck, type QuizHistoryRow } from '../services/quizDeckService';
 import { SubscriptionService } from '../services/subscriptionService';
+import { EngagementService } from '../services/engagementService';
 import { cn } from '../utils/cn';
 
 export default function QuizzesPage() {
@@ -22,6 +23,7 @@ export default function QuizzesPage() {
   const [messageTone, setMessageTone] = useState<'success' | 'error' | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [weeklyAllowed, setWeeklyAllowed] = useState<boolean | null>(null);
+  const [quizStartedAt, setQuizStartedAt] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -80,6 +82,10 @@ export default function QuizzesPage() {
     };
   }, [mode, navigate]);
 
+  useEffect(() => {
+    if (deck) setQuizStartedAt(Date.now());
+  }, [deck?.id]);
+
   const weeklyLocked = weeklyAllowed === false;
 
   const handleModeChange = (nextMode: 'daily' | 'weekly') => {
@@ -95,6 +101,14 @@ export default function QuizzesPage() {
     if (!userId || !deck) return;
     setSubmitting(true);
     const attempt = await QuizDeckService.submitAttempt(userId, deck, answers);
+    const startedAt = quizStartedAt || Date.now();
+    const durationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    await EngagementService.trackEvent(
+      userId,
+      'learning_time',
+      { source: 'quiz', deckId: deck.id, mode: deck.mode },
+      durationSeconds
+    );
     const xpText = attempt.passed
       ? attempt.awarded
         ? `+${attempt.xpEarned} XP`

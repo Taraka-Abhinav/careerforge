@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /roadmap
+Disallow: /learn
+Disallow: /settings
+Disallow: /profile
+Disallow: /quizzes
+Disallow: /challenges
+Disallow: /arena
+Disallow: /starm
+Disallow: /analytics
+Disallow: /onboarding
+Disallow: /welcome
+Disallow: /auth
+
+Sitemap: https://careerforge.ai/sitemap.xml

@@ -256,6 +256,7 @@ export default function LearnFocus() {
                 <ModuleRenderer
                   module={activeModule}
                   skillName={skillData.skillName}
+                  userId={userId}
                   onComplete={() => handleCompleteModule(activeModule)}
                   completing={completing}
                   quizSlot={

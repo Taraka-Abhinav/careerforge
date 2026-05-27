@@ -19,12 +19,63 @@ export default function PublicResourcePage({ type }: PublicResourcePageProps) {
     let isMounted = true;
     if (!slug) return;
 
+    const setMetaTag = (attr: 'name' | 'property', key: string, content: string) => {
+      let tag = document.querySelector(`meta[${attr}="${key}"]`);
+      if (!tag) {
+        tag = document.createElement('meta');
+        tag.setAttribute(attr, key);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute('content', content);
+    };
+
+    const setLinkTag = (rel: string, href: string) => {
+      let link = document.querySelector(`link[rel="${rel}"]`);
+      if (!link) {
+        link = document.createElement('link');
+        link.setAttribute('rel', rel);
+        document.head.appendChild(link);
+      }
+      link.setAttribute('href', href);
+    };
+
+    const setJsonLd = (payload: Record<string, unknown>) => {
+      let script = document.querySelector('#cf-jsonld');
+      if (!script) {
+        script = document.createElement('script');
+        script.setAttribute('id', 'cf-jsonld');
+        script.setAttribute('type', 'application/ld+json');
+        document.head.appendChild(script);
+      }
+      script.textContent = JSON.stringify(payload);
+    };
+
     PublicContentService.getResource(type, slug).then((next) => {
       if (!isMounted) return;
       setResource(next);
-      document.title = `${next.title} | CareerForge`;
-      const meta = document.querySelector('meta[name="description"]');
-      if (meta) meta.setAttribute('content', next.summary);
+      const title = `${next.title} | CareerForge`;
+      document.title = title;
+      const canonical = `${window.location.origin}/${type}/${next.slug}`;
+      setMetaTag('name', 'description', next.summary);
+      setMetaTag('property', 'og:title', title);
+      setMetaTag('property', 'og:description', next.summary);
+      setMetaTag('property', 'og:type', 'website');
+      setMetaTag('property', 'og:url', canonical);
+      setMetaTag('name', 'twitter:card', 'summary');
+      setMetaTag('name', 'twitter:title', title);
+      setMetaTag('name', 'twitter:description', next.summary);
+      setLinkTag('canonical', canonical);
+      setJsonLd({
+        '@context': 'https://schema.org',
+        '@type': type === 'career' ? 'EducationalOccupationalProgram' : 'LearningResource',
+        name: next.title,
+        description: next.summary,
+        url: canonical,
+        provider: {
+          '@type': 'Organization',
+          name: 'CareerForge',
+        },
+      });
     });
 
     return () => {

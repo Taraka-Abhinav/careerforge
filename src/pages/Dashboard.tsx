@@ -32,6 +32,17 @@ export default function Dashboard() {
     loadData();
   }, []);
 
+  const getStreakNudge = () => {
+    if (!progress.lastActiveDate) return 'Start your first streak today.';
+    const today = ProgressService.toLocalDateString();
+    const yesterday = ProgressService.toLocalDateString(new Date(Date.now() - 86400000));
+    if (progress.lastActiveDate === today) return null;
+    if (progress.lastActiveDate === yesterday) return 'Streak at risk: complete one activity today to keep it.';
+    return 'Your streak is paused. Complete one activity to restart it.';
+  };
+
+  const streakNudge = getStreakNudge();
+
   const loadData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -101,14 +112,21 @@ export default function Dashboard() {
               <span className="text-white font-bold px-2 py-1 rounded bg-white/5">{profile.goals.career}</span>
             </p>
           </div>
-          <div className="flex items-center gap-4 bg-neutral-900/50 border border-white/5 py-2.5 px-4 rounded-xl shadow-inner">
-            <div className="flex items-center gap-2 text-orange-400 font-bold text-sm">
-              <Flame className="w-5 h-5" /> {progress.streakDays} Day
+          <div className="flex flex-col gap-1 bg-neutral-900/50 border border-white/5 py-2.5 px-4 rounded-xl shadow-inner">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-orange-400 font-bold text-sm">
+                <Flame className="w-5 h-5" /> {progress.streakDays} Day
+              </div>
+              <div className="hidden sm:block h-5 w-px bg-white/10" />
+              <div className="text-xs text-neutral-400 font-bold">
+                Week {progress.weeklyStreak || 0} | Best {progress.longestStreak || progress.streakDays}
+              </div>
             </div>
-            <div className="hidden sm:block h-5 w-px bg-white/10" />
-            <div className="text-xs text-neutral-400 font-bold">
-              Week {progress.weeklyStreak || 0} | Best {progress.longestStreak || progress.streakDays}
-            </div>
+            {streakNudge && (
+              <div className="text-[11px] text-amber-400 font-semibold">
+                {streakNudge}
+              </div>
+            )}
           </div>
         </header>
 
