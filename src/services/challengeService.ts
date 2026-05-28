@@ -29,9 +29,12 @@ const TRACK_CATEGORY_MAP: Record<ReturnType<typeof getCareerTrack>, string[]> = 
 };
 
 function todayKey(): string {
+  // Use India Standard Time (UTC+5:30) as canonical daily boundary for assignments
   const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-  return local.toISOString().split('T')[0];
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  const istOffsetMs = 5.5 * 60 * 60 * 1000; // +5:30
+  const ist = new Date(utcMs + istOffsetMs);
+  return ist.toISOString().split('T')[0];
 }
 
 function normalizeCategory(category: string): string {
