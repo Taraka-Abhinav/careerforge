@@ -68,7 +68,7 @@ export const SKILL_TAXONOMY: SkillCategory[] = [
     category: 'Systems & Low-Level',
     skills: [
       'Operating Systems', 'Computer Architecture', 'Embedded C', 'RTOS', 'FPGA',
-      'Assembly', 'Concurrency', 'Distributed Systems',
+      'Assembly', 'Concurrency', 'Distributed Systems', 'CAD', 'Robotics', 'VHDL', 'Verilog',
     ],
   },
   {
