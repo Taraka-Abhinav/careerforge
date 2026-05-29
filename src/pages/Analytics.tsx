@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Flame, Trophy, Target, BookOpen, Clock, CheckCircle2 } from 'lucide-react';
+import { BarChart3, Flame, Trophy, Target, BookOpen, Clock, CheckCircle2, BrainCircuit, Sparkles, Sparkle, Lock, ArrowUpRight } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 import { supabase } from '../supabase/client';
-import { ProgressTrackingService, type AnalyticsSnapshot } from '../services/progressTrackingService';
+import { ProgressTrackingService, type AnalyticsSnapshot, type PersonalizedInsights } from '../services/progressTrackingService';
 import { SubscriptionService } from '../services/subscriptionService';
 
 function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: React.ElementType }) {
@@ -22,20 +23,31 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string |
 
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<AnalyticsSnapshot | null>(null);
+  const [insights, setInsights] = useState<PersonalizedInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [canViewAdvanced, setCanViewAdvanced] = useState(true);
+  const [canViewRecommendations, setCanViewRecommendations] = useState(true);
+  const [canViewReports, setCanViewReports] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [s, allowed] = await Promise.all([
+      const [s, allowed, allowedRecs, allowedReports] = await Promise.all([
         ProgressTrackingService.getAnalytics(user.id),
         SubscriptionService.canUseFeature(user.id, 'advanced_analytics'),
+        SubscriptionService.canUseFeature(user.id, 'personalized_recommendations'),
+        SubscriptionService.canUseFeature(user.id, 'personalized_weekly_reports'),
       ]);
       setStats(s);
       setCanViewAdvanced(allowed);
+      setCanViewRecommendations(allowedRecs);
+      setCanViewReports(allowedReports);
+      
+      const ins = await ProgressTrackingService.getPersonalizedInsights(user.id);
+      setInsights(ins);
+
       if (allowed) await SubscriptionService.trackFeatureUsage(user.id, 'advanced_analytics');
       setLoading(false);
     })();
@@ -156,6 +168,150 @@ export default function AnalyticsPage() {
             </Card>
           )}
         </div>
+
+        {/* Personalized AI Recommendations Section */}
+        <section className="space-y-4">
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+            <Sparkles className="w-6 h-6 text-indigo-400" /> Strategic AI Recommendations
+          </h2>
+          {canViewRecommendations && insights ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {insights.recommendations.map((rec) => (
+                <Card key={rec.id} className="p-5 border-indigo-500/10 bg-indigo-500/5 relative hover:border-indigo-500/30 transition-all flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded">
+                        Target {rec.type}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-white text-base">{rec.title}</h3>
+                    <p className="text-xs text-neutral-400 leading-relaxed">{rec.reason}</p>
+                  </div>
+                  <div className="pt-4 flex justify-end">
+                    <Button size="sm" icon={<ArrowUpRight className="w-4 h-4" />} onClick={() => navigate(rec.actionUrl)}>
+                      Start Task
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-8 border-dashed border-white/10 flex flex-col items-center justify-center text-center space-y-4 bg-neutral-900/40">
+              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 text-neutral-400">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div className="space-y-1 max-w-sm">
+                <h4 className="font-bold text-white">Unlock AI Recommendations</h4>
+                <p className="text-xs text-neutral-400">Get strategic next steps mapping precisely to your weak spots and career goals.</p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/settings')}>
+                Upgrade to Pro
+              </Button>
+            </Card>
+          )}
+        </section>
+
+        {/* Personalized Weekly Reports Section */}
+        <section className="space-y-4">
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+            <BrainCircuit className="w-6 h-6 text-emerald-400" /> Weekly Career Mastery Report
+          </h2>
+          {canViewReports && insights ? (
+            <Card className="p-6 border-white/5 bg-gradient-to-b from-neutral-900 to-neutral-950 space-y-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-white/5">
+                <div>
+                  <h3 className="text-lg font-black text-white">{insights.weeklyReport.title}</h3>
+                  <p className="text-xs text-neutral-400 mt-1">{insights.weeklyReport.summary}</p>
+                </div>
+                <div className="flex items-center gap-3 bg-white/5 border border-white/10 py-2 px-4 rounded-xl">
+                  <div>
+                    <div className="text-[9px] uppercase font-bold text-neutral-400">Readiness Score</div>
+                    <div className="text-xl font-black text-emerald-400">{insights.weeklyReport.careerReadinessScore}%</div>
+                  </div>
+                  <div className="h-8 w-px bg-white/10" />
+                  <div>
+                    <div className="text-[9px] uppercase font-bold text-neutral-400">Trend</div>
+                    <div className="text-xs font-semibold text-neutral-300">
+                      {insights.careerReadinessTrend.join(' ➔ ')}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Insights Grid */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase text-neutral-400">Skills Analysis</h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between items-start gap-4">
+                        <span className="text-neutral-500">Strongest:</span>
+                        <div className="flex flex-wrap gap-1.5 justify-end">
+                          {insights.strongestSkills.map(s => <Badge key={s} color="emerald">{s}</Badge>)}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-start gap-4">
+                        <span className="text-neutral-500">Focus Areas:</span>
+                        <div className="flex flex-wrap gap-1.5 justify-end">
+                          {insights.weakestSkills.map(s => <Badge key={s} color="amber">{s}</Badge>)}
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-neutral-500">Most Improved:</span>
+                        <span className="font-bold text-indigo-400">{insights.mostImprovedSkill}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-2 border-t border-white/5">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1.5">
+                        <span className="text-neutral-400">Learning Efficiency Index</span>
+                        <span className="font-bold text-white">{insights.learningEfficiency}/100</span>
+                      </div>
+                      <ProgressBar progress={insights.learningEfficiency} color="bg-indigo-500" containerClass="bg-neutral-950 h-2 rounded-full" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1.5">
+                        <span className="text-neutral-400">Weekly Consistency Index</span>
+                        <span className="font-bold text-white">{insights.studyConsistency}/100</span>
+                      </div>
+                      <ProgressBar progress={insights.studyConsistency} color="bg-emerald-500" containerClass="bg-neutral-950 h-2 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Report Sections */}
+                <div className="space-y-4 border-t md:border-t-0 md:border-l border-white/5 pt-4 md:pt-0 md:pl-6">
+                  <h4 className="text-xs font-bold uppercase text-neutral-400">Strategic Guidance</h4>
+                  <div className="space-y-4">
+                    {insights.weeklyReport.sections.map((sect, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <Sparkle className="w-3.5 h-3.5 text-indigo-400" /> {sect.title}
+                        </div>
+                        <p className="text-xs text-neutral-400 leading-relaxed">{sect.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-8 border-dashed border-white/10 flex flex-col items-center justify-center text-center space-y-4 bg-neutral-900/40">
+              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 text-neutral-400">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div className="space-y-1 max-w-sm">
+                <h4 className="font-bold text-white">Unlock Career Mastery Reports</h4>
+                <p className="text-xs text-neutral-400">Access deep-dive reports showing your skill strength distributions, efficiency graphs, and consistency trends.</p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/settings')}>
+                Upgrade to Professional
+              </Button>
+            </Card>
+          )}
+        </section>
       </div>
     </AppShell>
   );

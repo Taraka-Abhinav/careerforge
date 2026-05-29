@@ -183,6 +183,15 @@ export const ARENA_CHALLENGE_BANK: ArenaChallengeTemplate[] = [
   c('h20', 'Debugging', 'Race-Safe Counter', 'Return final count after concurrent increment simulation.', 'Hard', 110,
     'function finalCount(ops) {\n}', 'finalCount(input.ops)',
     [{ input: { ops: ['inc', 'inc', 'inc'] }, expected: 3 }]),
+  c('e11', 'Logic', 'G-Code Line Parser', 'Parse a line of G-code (G0/G1 X.. Y..) and return target coordinates as object {x, y}.', 'Easy', 55,
+    'function parseGCode(line) {\n}', 'parseGCode(input.line)',
+    [{ input: { line: 'G1 X10.5 Y20.3' }, expected: { x: 10.5, y: 20.3 } }, { input: { line: 'G0 X0 Y0' }, expected: { x: 0, y: 0 } }]),
+  c('m21', 'Coding', 'Robotic Link FK', 'Calculate 2D Forward Kinematics for a 2-joint arm given lengths L1, L2 and angles A1, A2 in degrees. Return rounded [x, y].', 'Medium', 80,
+    'function forwardKinematics(l1, l2, a1, a2) {\n}', 'forwardKinematics(input.l1, input.l2, input.a1, input.a2)',
+    [{ input: { l1: 10, l2: 10, a1: 0, a2: 90 }, expected: [10, 10] }]),
+  c('h21', 'Logic', 'VHDL Signal Parser', 'Check if a VHDL entity signal declaration is valid. E.g. "signal reset : std_logic;"', 'Hard', 110,
+    'function validateSignal(decl) {\n}', 'validateSignal(input.decl)',
+    [{ input: { decl: 'signal reset : std_logic;' }, expected: true }, { input: { decl: 'sig clk : std;' }, expected: false }]),
 ];
 
 export const ARENA_BANK_PREFIX = 'arena-';

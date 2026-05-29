@@ -1,7 +1,7 @@
 export interface CareerOption {
   id: string;
   label: string;
-  track: 'ai' | 'data' | 'web' | 'backend' | 'devops' | 'security' | 'mobile' | 'embedded' | 'game' | 'blockchain' | 'product';
+  track: 'ai' | 'data' | 'web' | 'backend' | 'devops' | 'security' | 'mobile' | 'embedded' | 'game' | 'blockchain' | 'product' | 'mechanical';
   description: string;
 }
 
@@ -22,6 +22,7 @@ export const CAREER_OPTIONS: CareerOption[] = [
   { id: 'embedded', label: 'Embedded Systems Engineer', track: 'embedded', description: 'Firmware, IoT, and hardware-software' },
   { id: 'blockchain', label: 'Blockchain Developer', track: 'blockchain', description: 'Smart contracts and Web3 systems' },
   { id: 'product', label: 'Product Manager (Tech)', track: 'product', description: 'Roadmaps, metrics, and technical product' },
+  { id: 'mechanical-engineer', label: 'Mechanical Engineer', track: 'mechanical', description: 'CAD, robotics, and hardware systems' },
 ];
 
 export function getCareerTrack(careerLabel: string): CareerOption['track'] {
@@ -38,5 +39,6 @@ export function getCareerTrack(careerLabel: string): CareerOption['track'] {
   if (/Product/i.test(careerLabel)) return 'product';
   if (/Frontend/i.test(careerLabel)) return 'web';
   if (/Backend/i.test(careerLabel)) return 'backend';
+  if (/Mechanical/i.test(careerLabel)) return 'mechanical';
   return 'web';
 }

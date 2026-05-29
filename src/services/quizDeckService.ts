@@ -57,6 +57,7 @@ const TRACK_CATEGORIES: Record<ReturnType<typeof getCareerTrack>, string[]> = {
   game: ['Game & Graphics', 'Programming Languages', 'Tools & Practices'],
   blockchain: ['Blockchain & Web3', 'Backend & APIs', 'Programming Languages', 'Tools & Practices'],
   product: ['Tools & Practices', 'Web & Frontend', 'Backend & APIs'],
+  mechanical: ['Systems & Low-Level', 'Programming Languages', 'Tools & Practices'],
 };
 
 function todayKey(): string {

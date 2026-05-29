@@ -119,6 +119,15 @@ const BLUEPRINTS: Record<Track, TrackBlueprint> = {
     ],
     capstone: 'Product Case Study Portfolio',
   },
+  mechanical: {
+    phases: [
+      { name: 'Engineering Foundations & MATLAB', skills: ['MATLAB', 'Python', 'C', 'Git'] },
+      { name: '3D Modeling & CAD Design', skills: ['CAD', 'Robotics', 'System Design'] },
+      { name: 'Digital Systems & HDLs', skills: ['VHDL', 'Verilog', 'Computer Architecture'] },
+      { name: 'Embedded Hardware Systems', skills: ['Embedded C', 'Linux', 'RTOS'] },
+    ],
+    capstone: 'Automated Robotic Arm Simulation',
+  },
 };
 
 function node(skill: string, format = 'Interactive'): RoadmapNode {

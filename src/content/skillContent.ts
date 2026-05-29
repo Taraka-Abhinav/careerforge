@@ -1,4 +1,5 @@
 import type { ModuleType } from '../types';
+import { buildSkillQuestion } from './quizBank';
 
 export interface CodeExample {
   title: string;
@@ -51,6 +52,11 @@ const SKILL_OVERRIDES: Record<string, Partial<{ intro: string; useCase: string }
   'Machine Learning': { intro: 'ML learns patterns from data instead of hard-coded rules.', useCase: 'Recommendations, fraud detection, and medical imaging.' },
   SQL: { intro: 'SQL is the language of relational data: queries, joins, aggregations.', useCase: 'Every company with a database needs SQL.' },
   Docker: { intro: 'Docker packages apps with dependencies into portable containers.', useCase: 'CI/CD and cloud deploys standardize on containers.' },
+  CAD: { intro: 'CAD (Computer-Aided Design) is essential for creating precise 3D mechanical models and technical drawings.', useCase: 'Tesla and Boeing engineers use CAD to design and simulate mechanical components.' },
+  MATLAB: { intro: 'MATLAB is a programming environment designed for algorithm development, data analysis, and numerical computation.', useCase: 'Automotive and aerospace teams use MATLAB for control system design and simulations.' },
+  Robotics: { intro: 'Robotics integrates kinematics, control systems, sensors, and actuators to build autonomous physical systems.', useCase: 'Boston Dynamics and Amazon Robotics use robotics engineering to design smart mobile machines.' },
+  VHDL: { intro: 'VHDL is a hardware description language used to model and simulate digital electronic systems.', useCase: 'FPGA and ASIC design engineers use VHDL for space, military, and telecom hardware.' },
+  Verilog: { intro: 'Verilog is a hardware description language used to design and verify digital logic circuits.', useCase: 'Intel, AMD, and NVIDIA use Verilog to implement and test microprocessors.' },
 };
 
 function skillMeta(skill: string) {
@@ -185,14 +191,14 @@ export function getProjectContent(skill: string, career: string): RichProjectCon
   };
 }
 
-export function getQuizContent(skill: string) {
+export function getQuizContent(skill: string, career?: string) {
   return {
-    passThreshold: 70,
+    passThreshold: 75,
     questions: [
-      { id: 'q1', prompt: `In production, why is ${skill} valuable?`, options: ['It solves real user/business problems', 'It is trendy only', 'It replaces all other tools', 'It needs no practice'], correctIndex: 0 },
-      { id: 'q2', prompt: 'Best way to learn this module?', options: ['Only watch videos', 'Build + test + reflect', 'Memorize syntax', 'Skip practice'], correctIndex: 1 },
-      { id: 'q3', prompt: 'What should you do after this lesson?', options: ['Move on immediately', 'Complete practice then project', 'Forget the theory', 'Only read docs'], correctIndex: 1 },
-      { id: 'q4', prompt: `Senior engineers using ${skill} prioritize:`, options: ['Clever hacks', 'Maintainability and clarity', 'Longest code wins', 'No documentation'], correctIndex: 1 },
+      buildSkillQuestion(skill, 'Easy', 0, career),
+      buildSkillQuestion(skill, 'Easy', 1, career),
+      buildSkillQuestion(skill, 'Medium', 0, career),
+      buildSkillQuestion(skill, 'Hard', 0, career),
     ],
   };
 }
@@ -250,7 +256,7 @@ export function getModuleContent(skill: string, career: string, type: ModuleType
     case 'practice':
       return getPracticeContent(skill, career) as unknown as Record<string, unknown>;
     case 'quiz':
-      return getQuizContent(skill);
+      return getQuizContent(skill, career);
     case 'project':
       return getProjectContent(skill, career) as unknown as Record<string, unknown>;
     case 'assessment':

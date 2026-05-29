@@ -26,6 +26,7 @@ const TRACK_CATEGORY_MAP: Record<ReturnType<typeof getCareerTrack>, string[]> = 
   game: ['Coding', 'Logic', 'System Design', 'AI'],
   blockchain: ['Cybersecurity', 'System Design', 'Coding', 'Database'],
   product: ['Logic', 'System Design', 'Database', 'Web Development'],
+  mechanical: ['Logic', 'Coding', 'System Design', 'AI'],
 };
 
 function todayKey(): string {
