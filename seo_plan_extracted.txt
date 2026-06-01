@@ -1,0 +1,147 @@
+CareerForge — Internal Cofounder Action Plan SEO Content Database Specs
+CareerForge
+Programmatic SEO Content Implementation Plan
+Technical Specification & Deliverables Checklist for Cofounder
+1 Objective: Programmatic Content Integration
+To launch our high-authority SEO growth machine, we are moving away from static hard-coded
+pages. Instead, we are building a structured content database.
+Your Task: Create a highly structured TypeScript file ( .ts) for each target path. These files
+will be dynamically loaded by our programmatic page generation framework in Next.js (/career/[id]
+and /skill/[id]).
+Content Standard Rule
+Every single file must strictly provide realistic, deep, and highly valuable career and skill
+guidance. No Lorem Ipsum, no thin explanations, and no placeholder content. The quality
+must immediately convince cold visitors to sign up.
+1
+
+CareerForge — Internal Cofounder Action Plan SEO Content Database Specs
+2 The TypeScript Schema ( src/types/seo.ts)
+All created data structures must strictly implement this TypeScript interface to compile correctly
+with our dynamic page layouts:
+TypeScript Contract Definition
+export interface SEORoadmapPage {
+slug: string; // URL-friendly identifier
+title: string; // Primary Page H1 heading
+metaDescription: string; // Optimized SEO description (150-160 chars)
+introduction: {
+whatIsIt: string; // Direct definition
+whyItMatters: string; // Professional demand background
+futureScope: string; // Horizon outlook
+};
+roadmapSteps: {
+phase: 'Beginner' | 'Intermediate' | 'Advanced' |
+'Projects' | 'Industry Readiness';
+title: string;
+description: string;
+recommendedOrder: number;
+}[];
+requiredSkills: {
+name: string;
+description: string;
+priority: 'high' | 'medium' | 'low';
+}[];
+recommendedLearningOrder: string[]; // Sequential order of topics
+projectIdeas: {
+title: string;
+difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+description: string;
+architectureHint: string; // Tooling, database, or API design
+}[];
+industryTools: string[]; // Specific tech stack tools
+salaryInfo: {
+indiaRange: { fresher: string; experienced: string };
+globalRange: { fresher: string; experienced: string };
+};
+careerOpportunities: string[]; // Job roles (e.g. "ML Engineer")
+faqs: { question: string; answer: string }[]; // Rich-Snippet ready
+commonMistakes: string[]; // Pitfalls beginners make
+tipsForSuccess: string[]; // Actionable habits for fast learning
+curatedResources: { title: string; url: string; type: string }[];
+}
+2
+
+CareerForge — Internal Cofounder Action Plan SEO Content Database Specs
+3 Deliverables Checklist: Career Data Files
+Create each of the following files inside the src/data/careers/ directory. Every file must export
+a single constant of type SEORoadmapPage.
+□ ai-engineer.ts
+□ software-engineer.ts
+□ frontend-developer.ts
+□ backend-developer.ts
+□ fullstack-developer.ts
+□ data-scientist.ts
+□ machine-learning-engineer.ts
+□ cybersecurity-engineer.ts
+□ cloud-engineer.ts
+□ devops-engineer.ts
+□ blockchain-developer.ts
+□ game-developer.ts
+□ mobile-app-developer.ts
+□ embedded-systems-engineer.ts
+□ robotics-engineer.ts
+□ mechanical-engineer.ts
+□ civil-engineer.ts
+□ electrical-engineer.ts
+□ electronics-engineer.ts
+□ aerospace-engineer.ts
+□ automobile-engineer.ts
+□ chemical-engineer.ts
+□ biomedical-engineer.ts
+□ industrial-engineer.ts
+□ mechatronics-engineer.ts
+4 Deliverables Checklist: Skill Data Files
+Create each of the following files inside the src/data/skills/ directory. Every file must export
+a single constant of type SEORoadmapPage.
+□ python.ts
+□ java.ts
+□ c.ts
+□ cpp.ts
+□ javascript.ts
+□ typescript.ts
+□ react.ts
+□ nextjs.ts
+□ nodejs.ts
+□ expressjs.ts
+□ sql.ts
+□ mongodb.ts
+□ system-design.ts
+□ data-structures.ts
+□ algorithms.ts
+□ machine-learning.ts
+□ deep-learning.ts
+□ artificial-intelligence.ts
+□ computer-vision.ts
+□ natural-language-processing.ts
+3
+
+CareerForge — Internal Cofounder Action Plan SEO Content Database Specs
+□ tensorflow.ts
+□ pytorch.ts
+□ docker.ts
+□ kubernetes.ts
+□ aws.ts
+□ azure.ts
+□ linux.ts
+□ git.ts
+□ cybersecurity.ts
+□ ethical-hacking.ts
+□ blockchain.ts
+□ solidity.ts
+□ flutter.ts
+□ react-native.ts
+□ ui-ux-design.ts
+□ figma.ts
+□ cad.ts
+□ embedded-c.ts
+□ robotics.ts
+□ matlab.ts
+□ verilog.ts
+□ vhdl.ts
+5 Dynamic Directory Mapping
+To export all files cleanly to our routing paths, configure your dynamic index mappings as fol-
+lows:
+• Careers Map: Maintain an active registry in src/data/careers/index.ts exporting an ob-
+ject mapping the path slugs to their respective imports.
+• Skills Map: Maintain an active registry in src/data/skills/index.ts for skill path map-
+ping.
+4
